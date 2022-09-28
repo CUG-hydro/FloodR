@@ -1,12 +1,20 @@
 ---
-output:
-  md_document:
-    variant: gfm 
+output: github_document
 ---
 
+```{r, echo = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#",
+  fig.width = 10, fig.height = 5,
+  fig.align = "center",
+  fig.path  = "man/Figure/",
+  dev = 'svg'
+)
+devtools::load_all()
+```
+
 <!-- README.md is generated from README.Rmd. Please edit that file -->
-
-
 
 # FloodR
 
@@ -26,7 +34,7 @@ This package provides tools for:
 ## Installation and usage
 
 ```{r, eval = FALSE}
-devtools::install_github(repo = "PhilippBuehler/FloodR")
+remotes::install_github(repo = "PhilippBuehler/FloodR")
 ```
 
 ```{r}
@@ -50,7 +58,6 @@ head(Flood_events)
 ```
 
 
-
 ### Correction of flood events
 Run the Web separation on the dummy Catchment
 As input to the function a minimum of discharge data is used. The Flood event tables can be opened from within the User-Interface
@@ -58,7 +65,6 @@ As input to the function a minimum of discharge data is used. The Flood event ta
 Run_WebFlood()
 
 ```
-
 
 
 ### Separation of precipitation
@@ -78,9 +84,6 @@ Date1 <- PreconeCP(dailyprec, indT = indT)
 Date2 <- PrectwoCP(dailyprec, indT = indT)
 print(c("Method1" = Date1, "Method2" = Date2))
 ```
-
-
-
 
 
 ### Typing of flood events
@@ -111,8 +114,6 @@ ggplot(Floods_Rain)+
   scale_fill_manual(values = c("R1"="#D7191C", "R2"="#FDAE61", "R3"= "#1A9641"))
 
 ```
-
-
 
 
 ### Typewise and combined return period estimation with the TMPS model
@@ -169,10 +170,6 @@ ggplot(Results_melt)+
   scale_x_log10()+
   labs(x="T[a]",y="Peak discharge [m³/s]")+
   annotation_logticks(sides = "b")
-
-
-
-
 
 # Calculate 
 TMPS_probs_from_AMS_quants <- pTMPS(q = round(AMS), 

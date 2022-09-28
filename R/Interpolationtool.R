@@ -22,7 +22,7 @@
 #' @author Laura Haendel
 #' @keywords ~classif ~ts
 #' @keywords internal
-min_max_coordinates <- function(Station_list, Area,coordinates){
+min_max_coordinates <- function(Station_list, Area, coordinates){
   #Koordinatenpunkte aller Gebiete einlesen um minimale und maximale Rechts- und Hochwerte f?r die Voronoi-Polygone zu haben
   min_e <- list()
   max_e <- list()

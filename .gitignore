@@ -2,3 +2,10 @@
 .Rbuildignore
 .Rhistory
 .Rhistory
+
+*.dll
+*.o
+*.so
+
+*.png
+*.html

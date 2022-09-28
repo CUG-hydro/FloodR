@@ -5,6 +5,11 @@
 
 using namespace Rcpp;
 
+#ifdef RCPP_USE_GLOBAL_ROSTREAM
+Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
+Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
+#endif
+
 // leastSqrRegression
 List leastSqrRegression(NumericVector x_in, NumericVector y_in, IntegerMatrix Comb, bool intercept_zero);
 RcppExport SEXP _FloodR_leastSqrRegression(SEXP x_inSEXP, SEXP y_inSEXP, SEXP CombSEXP, SEXP intercept_zeroSEXP) {
