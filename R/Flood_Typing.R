@@ -29,7 +29,6 @@ Flood_typology <- function(Floods, n_G = 3L, fast_composition = FALSE,
 
   Floods_all <- Floods_all[!is.na(HQ_dir)]
 
-
   #Regen Ereignisse
   Floods_R <- Floods_all[SM_rel<0.2][,Type:=factor(NA,levels = paste0("R", 1:n_G))]
 
@@ -54,7 +53,7 @@ Flood_typology <- function(Floods, n_G = 3L, fast_composition = FALSE,
   Comb <- cbind(0, mat)
   Comb <- t(apply(Comb, 1, cumsum))
 
-  # improve at here
+  # TODO: improve at here
   OUT <- leastSqrRegression(Floods_R$HQ_dir, Floods_R$dir_Volume, Comb, intercept_zero = TRUE)
 
   R2_mat <- OUT[[3]]

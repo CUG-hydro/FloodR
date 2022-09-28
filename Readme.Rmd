@@ -54,20 +54,19 @@ dailyMQ <- data.frame(Date=seq(from=as.Date("01.01.2000", format="%d.%m.%Y"),
 Flood_events <- eventsep(dailyMQ)
 # The Separation might still contain overlaid flood events which need to be corrected
 head(Flood_events)
-
 ```
 
 
 ### Correction of flood events
+
 Run the Web separation on the dummy Catchment
 As input to the function a minimum of discharge data is used. The Flood event tables can be opened from within the User-Interface
 ```{r, eval = FALSE}
 Run_WebFlood()
-
 ```
 
-
 ### Separation of precipitation
+
 After the flood events are corrected (if needed), the precipitation belonging to flood event need to be estimated
 For the both functions, a daily precipitation timeseries is needed, as well as  the parameter indT, which has the position indices of begin, end and peak of the FLOOD event as vector.
 ```{r}
@@ -87,6 +86,7 @@ print(c("Method1" = Date1, "Method2" = Date2))
 
 
 ### Typing of flood events
+
 For the typing of the flood event, multiple characteristics for each flood event must be calculated before:
 
 * Sum_SM: Sum of snowmelt during the floodevent in mm
@@ -108,11 +108,11 @@ table(Floods_typed$Type)
 # Plot the event typing
 Floods_Rain <- Floods_typed[Floods_typed$Type %in% c("R1", "R2", "R3"),]
 
-suppressMessages(library(ggplot2))
+library(ggplot2)
 ggplot(Floods_Rain)+
-  geom_point(aes(x=dir_Volume, y=HQ_dir, fill=Type), colour="black", shape=21, size=2)+
+  geom_point(aes(x=dir_Volume, y=HQ_dir, fill=Type), 
+    colour="black", shape=21, size=2)+
   scale_fill_manual(values = c("R1"="#D7191C", "R2"="#FDAE61", "R3"= "#1A9641"))
-
 ```
 
 
@@ -129,7 +129,6 @@ Also, a daily discharge timeseries with a "Date" and "Discharge" column is neede
 # Open the discharge data
 data("Discharge")
 head(Discharge)
-
 
 Floods_typed <- Floods_typed[, c("Peak_date","HQ", "Type")]
 

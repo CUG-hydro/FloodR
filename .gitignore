@@ -9,3 +9,8 @@
 
 *.png
 *.html
+*.pdf
+
+data-raw
+inst/doc
+scripts

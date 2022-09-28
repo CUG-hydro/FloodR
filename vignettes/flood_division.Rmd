@@ -1,0 +1,86 @@
+---
+title: "flood events division"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{flood_division}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(FloodR)
+```
+
+# 洪水事件划分
+
+## Separation of flood events
+
+For the separation of flood events from a discharge timeseries, we need the daily discharge. 
+```{r}
+date_begin = as.Date("01.01.2000", format = "%d.%m.%Y")
+date_end = as.Date("01.01.2004", format="%d.%m.%Y")
+
+df_q <- data.frame(
+  Date = seq(date_begin, date_end, "day"),
+  discharge = rbeta(1462, 2, 20)*100) # dummy data
+flood_events <- eventsep(df_q)
+head(flood_events)
+```
+
+The Separation might still contain overlaid flood events which need to be corrected.
+
+## 参数的选择
+
+
+
+## Correction of flood events
+
+Run the Web separation on the dummy Catchment
+As input to the function a minimum of discharge data is used. The Flood event tables can be opened from within the User-Interface
+```{r, eval = FALSE}
+Run_WebFlood()
+```
+
+# 洪水事件的类型
+
+
+### Typing of flood events
+
+For the typing of the flood event, multiple characteristics for each flood event must be calculated before:
+
+* Sum_SM: Sum of snowmelt during the floodevent in mm
+
+* Sum_N: Sum of precipitation during the floodevent in mm (For example from the separation of precipitation)
+
+* dir_Volume: Direct volume of the flood event (Volume minus baseflow) in Mio. m³/s (This is calculated in the floodevent separation as well as in the output after running the Run_WebFlood)
+
+* HQ_dir: Direct peak (instantaneous flood peak minus baseflow) in m³/s (This is calculated in the floodevent separation as well as in the output after running the Run_WebFlood)
+
+* PSI_SM: Runoff coefficient of the flood event with snowmelt + precipitation
+
+```{r}
+# Open the sample flood event data
+data("Sample_Flood_events")
+head(Sample_Flood_events)
+
+# Run the event typing
+Floods_typed <- Flood_typology(Floods = Sample_Flood_events, n_G = 3, Type_3_min_samplesize = 10)
+
+table(Floods_typed$Type)
+
+# Plot the event typing
+Floods_Rain <- Floods_typed[Floods_typed$Type %in% c("R1", "R2", "R3"),]
+
+library(ggplot2)
+ggplot(Floods_Rain)+
+  geom_point(aes(x=dir_Volume, y=HQ_dir, fill=Type), 
+    colour="black", shape=21, size=2)+
+  scale_fill_manual(values = c("R1"="#D7191C", "R2"="#FDAE61", "R3"= "#1A9641"))
+```

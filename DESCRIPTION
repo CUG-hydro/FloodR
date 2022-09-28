@@ -8,8 +8,13 @@ Description: Flood event separation on the basis of daily and hourly mean discha
 License: GPL-3
 Encoding: UTF-8
 Imports: shiny, data.table, Rcpp, spatstat, partitions, ggplot2, fExtremes, tibble
-Suggests: rgenoud
+Suggests: 
+    knitr,
+    rgenoud,
+    rmarkdown
 Depends: R (>= 3.5)
 LinkingTo: Rcpp
 LazyData: true
 RoxygenNote: 7.2.1
+VignetteBuilder: knitr
+Roxygen: list(markdown = TRUE)
