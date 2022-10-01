@@ -8,7 +8,7 @@ PrectwoCP(Prec_table, indT, s_p = 4, min_step = 3)
 }
 \arguments{
 \item{Prec_table}{A dataframe with the first column equal to the date and the
-second column consisting of the daily precipitation sums [mm].}
+second column consisting of the daily precipitation sums \verb{[mm]}.}
 
 \item{indT}{An integer vector with three entries: first the index of date in
 X of the begin of the flood event, second the index of date in X of the end

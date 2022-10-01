@@ -99,7 +99,7 @@ PreconeCP<-function(Prec_table,indT,min_step=3){
 #' then is defined as the first of these two change points.
 #'
 #' @param Prec_table A dataframe with the first column equal to the date and the
-#' second column consisting of the daily precipitation sums [mm].
+#' second column consisting of the daily precipitation sums `[mm]`.
 #' @param indT An integer vector with three entries: first the index of date in
 #' X of the begin of the flood event, second the index of date in X of the end
 #' of the flood event and third the index of the date in X of the peak of the

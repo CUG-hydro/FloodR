@@ -78,19 +78,19 @@ is a flood event:
 \item{Begin}{date (d.m.Y) of the begin of the flood event} \item{End}{date
 (d.m.Y) of the end of the flood event} \item{Peak_date}{date (d.m.Y) of the
 maximum daily discharge during the flood event} \item{DailyMQ}{maximum daily
-mean discharge [m³/s] during the flood event} \item{Volume}{volume [Mio.
-m³] of the flood event calculated by the sum of all daily mean discharges
-during the flood event} \item{dir_Volume}{direct volume [Mio. m³]
+mean discharge \verb{[m³/s]} during the flood event} \item{Volume}{volume \verb{[Mio. m³]}
+of the flood event calculated by the sum of all daily mean discharges
+during the flood event} \item{dir_Volume}{direct volume \verb{[Mio. m³]}
 calculated by the difference of the volume and the baseflow. The baseflow is
 estimated by a straight line between the discharge at the beginning and the
-end of the flood event.} \item{baseflow_peak}{baseflow [m³/s] at the day of
+end of the flood event.} \item{baseflow_peak}{baseflow \verb{[m³/s]} at the day of
 the flood peak, calculated by the straight-line method.}
-\item{baseflow_begin}{baseflow [m³/s] at the beginning of the flood event,
+\item{baseflow_begin}{baseflow \verb{[m³/s]} at the beginning of the flood event,
 equal to the daily mean discharge of the beginning of the flood event.}
-\item{baseflow_end}{baseflow [m³/s] at the end of the flood event, equal to
+\item{baseflow_end}{baseflow \verb{[m³/s]} at the end of the flood event, equal to
 the daily mean discharge of the end of the flood event.}
 \item{No_peaks}{number of peaks during the flood event} \item{HQ}{peak
-discharge [m³/s] of the flood event taken from the monthly maximum
+discharge \verb{[m³/s]} of the flood event taken from the monthly maximum
 discharges. If no monthly maximum discharge is available for the flood
 event, it is set to NA.} \item{HQ_dir}{direct peak discharge, claculated by
 the difference of HQ and baseflow_peak} \item{comments}{a short note if the
@@ -218,18 +218,23 @@ whole event is listed in the output first, followed by the splitted partial
 events.
 }
 \examples{
-\dontrun{
+dailyMQ <- data.frame(
+  Date = seq(
+    from = as.Date("01.01.2000", format = "\%d.\%m.\%Y"),
+    to = as.Date("01.01.2004", format = "\%d.\%m.\%Y"), by = "days"
+  ),
+  discharge = rbeta(1462, 2, 20) * 100
+)
 
-dailyMQ<-data.frame(Date=seq(from=as.Date("01.01.2000", format="\%d.\%m.\%Y"),
-to=as.Date("01.01.2004", format="\%d.\%m.\%Y"), by="days"),
-discharge=rbeta(1462,2,20)*100)
-
-monthlyHQ<-data.frame(Date=seq(from=as.Date("01.01.2000", format="\%d.\%m.\%Y"),
-to=as.Date("01.01.2004", format="\%d.\%m.\%Y"), by="months"),
-discharge=dailyMQ$discharge[(0:48)*12+1]+rnorm(49,5,1))
+monthlyHQ <- data.frame(
+  Date = seq(
+    from = as.Date("01.01.2000", format = "\%d.\%m.\%Y"),
+    to = as.Date("01.01.2004", format = "\%d.\%m.\%Y"), by = "months"
+  ),
+  discharge = dailyMQ$discharge[(0:48) * 12 + 1] + rnorm(49, 5, 1)
+)
 
 eventsep(dailyMQ, monthlyHQ)
-}
 }
 \references{
 Klein, B. (2009): Ermittlung von Ganglinien für die
@@ -239,7 +244,7 @@ Bochum.
 
 Fischer, S., Schumann, A., & Bühler, P. (2019):
 Timescale-based flood typing to estimate temporal changes in flood frequencies.
- Hydrological Sciences Journal, 64(15), 1867–1892. https://doi.org/10.1080/02626667.2019.1679376
+Hydrological Sciences Journal, 64(15), 1867–1892. https://doi.org/10.1080/02626667.2019.1679376
 }
 \author{
 Svenja Fischer

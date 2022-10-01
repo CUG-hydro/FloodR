@@ -11,11 +11,6 @@ tr <- function(text){ # translates text into current language
 }
 
 
-
-
-
-
-
 #' reads table and covnerts string to date
 #'
 #' Internal function. reads table and covnerts string to date
@@ -41,11 +36,6 @@ my.read.table <- function(..., date.formats = c("%d.%m.%Y","%Y-%m-%d")) {
 }
 
 
-
-
-
-
-
 #' Adds Column to dataframe if nonexcistend
 #'
 #' Internal function. Adds Column to dataframe if nonexcistend
@@ -64,9 +54,6 @@ fncols <- function(data, cname) {
   }
   return(data)
 }
-
-
-
 
 
 #' Calculating flood statistics for output in GUI and table
@@ -100,8 +87,6 @@ calc_stats<- function(Floods,Q) {
   Floods$baseflow_peak=round(S$baseflow[which(S$Scheitel==TRUE)],2)
   Floods$baseflow_begin=round(S$Q_org[1],2)
   Floods$baseflow_end=round(S$Q_org[nrow(S)],2)
-
-
 
   if(!any(Floods$HQ == "" | is.na(Floods$HQ))){
     Floods$HQ_dir=round(Floods$HQ-Floods$baseflow_peak,2)

@@ -6,12 +6,7 @@
 #' @keywords Environments
 #' @export PKGENVIR
 #' @keywords internal
-PKGENVIR <- new.env(parent=emptyenv())
-
-
-
-
-
+PKGENVIR <- new.env(parent = emptyenv())
 
 
 #' Graphical web interface for browsing trough floodevents in daily resolution
@@ -50,7 +45,7 @@ PKGENVIR <- new.env(parent=emptyenv())
 #' meassured in continious small timesteps. If the value is given, the direct
 #' HQ and the TQ value are computed
 #'
-#' @param Discharge [OPTIONAL]: A list of dataframes with the discharge data.
+#' @param Discharge (OPTIONAL): A list of dataframes with the discharge data.
 #' Each dataframe must contain the Dischare data for a specific catchment with
 #' two columns:
 #'
@@ -59,7 +54,7 @@ PKGENVIR <- new.env(parent=emptyenv())
 #' Column 2: Meassured Data of Discharge
 #'
 #' The list entries need to be named after the catchment-identifier (eg. name)
-#' @param Precipitation [OPTIONAL]: A list of dataframes with the precipitation
+#' @param Precipitation (OPTIONAL): A list of dataframes with the precipitation
 #' data. Each dataframe must contain the precipitation data for a specific
 #' catchment with two columns:
 #'
@@ -68,7 +63,7 @@ PKGENVIR <- new.env(parent=emptyenv())
 #' Column 2: Meassured Data of Precipitation
 #'
 #' The list entries need to be named after the catchment-identifier (eg. name)
-#' @param Catchment_Properties [OPTIONAL]: A dataframe with the properties for
+#' @param Catchment_Properties (OPTIONAL): A dataframe with the properties for
 #' each catchment you want to use. This dataframe is only used to show
 #' information about the catchment. The dataframe must contain the following
 #' columns:
@@ -86,48 +81,68 @@ PKGENVIR <- new.env(parent=emptyenv())
 #' @examples
 #' \dontrun{
 #'
-#' #Run the dummy data:
+#' # Run the dummy data:
 #' Run_WebFlood()
 #'
 #'
-#' #Run with own Data:
-#' Discharge <-list(A=data.frame(Date=seq(from=as.Date("01.01.2000", format="%d.%m.%Y"),
-#'                                to=as.Date("01.01.2004", format="%d.%m.%Y"), by="days"),
-#'                       discharge=rbeta(1462,2,20)*100),
-#'                  B=data.frame(Date=seq(from=as.Date("01.01.2000", format="%d.%m.%Y"),
-#'                                        to=as.Date("01.01.2004", format="%d.%m.%Y"), by="days"),
-#'                               discharge=rbeta(1462,2,20)*100))
+#' # Run with own Data:
+#' Discharge <- list(
+#'   A = data.frame(
+#'     Date = seq(
+#'       from = as.Date("01.01.2000", format = "%d.%m.%Y"),
+#'       to = as.Date("01.01.2004", format = "%d.%m.%Y"), by = "days"
+#'     ),
+#'     discharge = rbeta(1462, 2, 20) * 100
+#'   ),
+#'   B = data.frame(
+#'     Date = seq(
+#'       from = as.Date("01.01.2000", format = "%d.%m.%Y"),
+#'       to = as.Date("01.01.2004", format = "%d.%m.%Y"), by = "days"
+#'     ),
+#'     discharge = rbeta(1462, 2, 20) * 100
+#'   )
+#' )
 #'
-#' Precipitation <-list(A=data.frame(Date=seq(from=as.Date("01.01.2000", format="%d.%m.%Y"),
-#'                                        to=as.Date("01.01.2004", format="%d.%m.%Y"), by="days"),
-#'                                   prec=rbeta(1462,2,20)*100),
-#'                  B=data.frame(Date=seq(from=as.Date("01.01.2000", format="%d.%m.%Y"),
-#'                                        to=as.Date("01.01.2004", format="%d.%m.%Y"), by="days"),
-#'                               prec=rbeta(1462,2,20)*100))
+#' Precipitation <- list(
+#'   A = data.frame(
+#'     Date = seq(
+#'       from = as.Date("01.01.2000", format = "%d.%m.%Y"),
+#'       to = as.Date("01.01.2004", format = "%d.%m.%Y"), by = "days"
+#'     ),
+#'     prec = rbeta(1462, 2, 20) * 100
+#'   ),
+#'   B = data.frame(
+#'     Date = seq(
+#'       from = as.Date("01.01.2000", format = "%d.%m.%Y"),
+#'       to = as.Date("01.01.2004", format = "%d.%m.%Y"), by = "days"
+#'     ),
+#'     prec = rbeta(1462, 2, 20) * 100
+#'   )
+#' )
 #'
 #'
-#' Catchment_Properties <-data.frame(Name=c("A","B"),Area=c(10,100),
-#' Height=c(100,1000),stringsAsFactors = FALSE)
-#'   language<-"en"
+#' Catchment_Properties <- data.frame(
+#'   Name = c("A", "B"), Area = c(10, 100),
+#'   Height = c(100, 1000), stringsAsFactors = FALSE
+#' )
+#' language <- "en"
 #'
-#' #Run_WebFlood(Discharge,Precipitation,Catchment_Properties)
-#' #Use the provided file "A_Floodevents_example.csv" to test
+#' # Run_WebFlood(Discharge,Precipitation,Catchment_Properties)
+#' # Use the provided file "A_Floodevents_example.csv" to test
 #' }
 #'
-#'
 #' @export Run_WebFlood
-Run_WebFlood <- function(Discharge=NULL,Precipitation=NULL,Catchment_Properties=NULL, language="en")
-{
+Run_WebFlood <- function(Discharge = NULL, Precipitation = NULL, Catchment_Properties = NULL, language = "en") {
   PKGENVIR$language <- language
   PKGENVIR$Discharge <- Discharge
   PKGENVIR$Precipitation <- Precipitation
   PKGENVIR$Catchment_Properties <- Catchment_Properties
   PKGENVIR$Dummy <- Dummy
 
-  if(any(c(sapply(PKGENVIR$Discharge, function(x) class(x[[1]]))) %in% c("POSIXct", "POSIXt"))){
+  if (any(c(sapply(PKGENVIR$Discharge, function(x) class(x[[1]]))) %in% c("POSIXct", "POSIXt"))) {
     print("hourly")
     shiny::runApp(appDir = system.file("shinyApp_hourly", package = "FloodR"))
-  }else{
+  } else {
     print("daily")
     shiny::runApp(appDir = system.file("shinyApp_daily", package = "FloodR"))
   }

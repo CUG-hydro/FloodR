@@ -26,7 +26,7 @@ Defaults to: 20, 100, 1000}
 
 \item{Threshold_Q}{numeric: Peak of Threshold, defaults to 3}
 
-\item{p_as_annuality}{logical: Should all probabilities be treated as an annuality [in years] instead of dimensionless values between 0 and 1}
+\item{p_as_annuality}{logical: Should all probabilities be treated as an annuality \verb{[in years]} instead of dimensionless values between 0 and 1}
 }
 \description{
 Apply the TMPS model for a typewise statistical estimate of return periods

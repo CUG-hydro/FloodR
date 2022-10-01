@@ -13,7 +13,7 @@ Run_WebFlood(
 )
 }
 \arguments{
-\item{Discharge}{[OPTIONAL]: A list of dataframes with the discharge data.
+\item{Discharge}{(OPTIONAL): A list of dataframes with the discharge data.
 Each dataframe must contain the Dischare data for a specific catchment with
 two columns:
 
@@ -23,7 +23,7 @@ Column 2: Meassured Data of Discharge
 
 The list entries need to be named after the catchment-identifier (eg. name)}
 
-\item{Precipitation}{[OPTIONAL]: A list of dataframes with the precipitation
+\item{Precipitation}{(OPTIONAL): A list of dataframes with the precipitation
 data. Each dataframe must contain the precipitation data for a specific
 catchment with two columns:
 
@@ -33,7 +33,7 @@ Column 2: Meassured Data of Precipitation
 
 The list entries need to be named after the catchment-identifier (eg. name)}
 
-\item{Catchment_Properties}{[OPTIONAL]: A dataframe with the properties for
+\item{Catchment_Properties}{(OPTIONAL): A dataframe with the properties for
 each catchment you want to use. This dataframe is only used to show
 information about the catchment. The dataframe must contain the following
 columns:
@@ -69,13 +69,13 @@ written, followed by the .csv extension. The file needs the following
 columns:
 
 Column "Begin": The date of the begin of the floodevent as sting (either in
-"%d.%m.%Y"or in "%Y-%m-%d")
+"\%d.\%m.\%Y"or in "\%Y-\%m-\%d")
 
 Column "End": The date of the end of the floodevent as sting (either in
-"%d.%m.%Y"or in "%Y-%m-%d")
+"\%d.\%m.\%Y"or in "\%Y-\%m-\%d")
 
 Column "Peak_date": The date of the peak of the floodevent as sting (either
-in "%d.%m.%Y"or in "%Y-%m-%d")
+in "\%d.\%m.\%Y"or in "\%Y-\%m-\%d")
 
 optional:
 
@@ -86,34 +86,55 @@ HQ and the TQ value are computed
 \examples{
 \dontrun{
 
-#Run the dummy data:
+# Run the dummy data:
 Run_WebFlood()
 
 
-#Run with own Data:
-Discharge <-list(A=data.frame(Date=seq(from=as.Date("01.01.2000", format="\%d.\%m.\%Y"),
-                               to=as.Date("01.01.2004", format="\%d.\%m.\%Y"), by="days"),
-                      discharge=rbeta(1462,2,20)*100),
-                 B=data.frame(Date=seq(from=as.Date("01.01.2000", format="\%d.\%m.\%Y"),
-                                       to=as.Date("01.01.2004", format="\%d.\%m.\%Y"), by="days"),
-                              discharge=rbeta(1462,2,20)*100))
+# Run with own Data:
+Discharge <- list(
+  A = data.frame(
+    Date = seq(
+      from = as.Date("01.01.2000", format = "\%d.\%m.\%Y"),
+      to = as.Date("01.01.2004", format = "\%d.\%m.\%Y"), by = "days"
+    ),
+    discharge = rbeta(1462, 2, 20) * 100
+  ),
+  B = data.frame(
+    Date = seq(
+      from = as.Date("01.01.2000", format = "\%d.\%m.\%Y"),
+      to = as.Date("01.01.2004", format = "\%d.\%m.\%Y"), by = "days"
+    ),
+    discharge = rbeta(1462, 2, 20) * 100
+  )
+)
 
-Precipitation <-list(A=data.frame(Date=seq(from=as.Date("01.01.2000", format="\%d.\%m.\%Y"),
-                                       to=as.Date("01.01.2004", format="\%d.\%m.\%Y"), by="days"),
-                                  prec=rbeta(1462,2,20)*100),
-                 B=data.frame(Date=seq(from=as.Date("01.01.2000", format="\%d.\%m.\%Y"),
-                                       to=as.Date("01.01.2004", format="\%d.\%m.\%Y"), by="days"),
-                              prec=rbeta(1462,2,20)*100))
+Precipitation <- list(
+  A = data.frame(
+    Date = seq(
+      from = as.Date("01.01.2000", format = "\%d.\%m.\%Y"),
+      to = as.Date("01.01.2004", format = "\%d.\%m.\%Y"), by = "days"
+    ),
+    prec = rbeta(1462, 2, 20) * 100
+  ),
+  B = data.frame(
+    Date = seq(
+      from = as.Date("01.01.2000", format = "\%d.\%m.\%Y"),
+      to = as.Date("01.01.2004", format = "\%d.\%m.\%Y"), by = "days"
+    ),
+    prec = rbeta(1462, 2, 20) * 100
+  )
+)
 
 
-Catchment_Properties <-data.frame(Name=c("A","B"),Area=c(10,100),
-Height=c(100,1000),stringsAsFactors = FALSE)
-  language<-"en"
+Catchment_Properties <- data.frame(
+  Name = c("A", "B"), Area = c(10, 100),
+  Height = c(100, 1000), stringsAsFactors = FALSE
+)
+language <- "en"
 
-#Run_WebFlood(Discharge,Precipitation,Catchment_Properties)
-#Use the provided file "A_Floodevents_example.csv" to test
+# Run_WebFlood(Discharge,Precipitation,Catchment_Properties)
+# Use the provided file "A_Floodevents_example.csv" to test
 }
-
 
 }
 \author{
