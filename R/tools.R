@@ -65,32 +65,34 @@ Q2W <- function(Q) {
 
 # events_temp = cal_floodInfo(q, t, pos_peak, pos_start, pos_end,
 #   monthlyHQ, comm = "")
-cal_floodInfo <- function(q, t, pos_peak, pos_start, pos_end, no_peaks,
-  monthlyHQ = NULL, comm = "") 
+cal_floodInfo <- function(q, t, pos_peak, pos_start, pos_end, 
+  no_peaks, monthlyHQ = NULL, comm = "", ...,
+  t_start = NULL, t_end = NULL) 
 {
   varnames <- c(
     "Begin", "End", "Peak_date", "DailyMQ", "Volume", "dir_Volume",
     "baseflow_peak", "baseflow_begin", "baseflow_end", "No_Peaks", "HQ", "HQ_dir", "Comments"
   )
   
-  basefl        <- approxfun(c(t[pos_start], t[pos_end]), c(q[pos_start], q[pos_end]))
+  if (is.null(t_start)) t_start <- t[pos_start]
+  if (is.null(t_end)) t_end <- t[pos_end]
   
-  start         <- t[pos_start]
-  end           <- t[pos_end]
+  basefl <- approxfun(c(t_start, t_end), c(q[pos_start], q[pos_end]))
+  
   peak_MQ       <- max(q[pos_start:pos_end])
-  peak_date     <- t[pos_peak]
+  t_peak        <- t[pos_peak]
   Volume        <- sum(q[pos_start:pos_end]) %>% Q2W()
-  Baseflow_peak <- basefl(peak_date)
-  Base_vol      <- integrate(basefl, lower = t[pos_start], upper = t[pos_end])$value %>% Q2W()
+  Baseflow_peak <- basefl(t_peak)
+  Base_vol      <- integrate(basefl, lower = t_start, upper = t_end)$value %>% Q2W()
   Vol_dir       <- Volume - Base_vol
-  base_start    <- basefl(start)
-  base_end      <- basefl(end)
+  base_start    <- basefl(t_start)
+  base_end      <- basefl(t_end)
 
-  HQ <- get_HQ(monthlyHQ, peak_date, peak_MQ)
+  HQ <- get_HQ(monthlyHQ, t_peak, peak_MQ)
   HQ_dir <- HQ - Baseflow_peak
 
   data.frame(
-    start, end, peak_date, peak_MQ, Volume,
+    t_start, t_end, t_peak, peak_MQ, Volume,
     Vol_dir, Baseflow_peak, base_start, base_end, no_peaks, HQ, HQ_dir, comm
   ) %>% set_names(varnames) # info
 }
@@ -115,4 +117,15 @@ get_base_rel <- function(t, q, pos_start, pos_end) {
   base_rel <- (basefl1(t[pos_end]) - basefl1(t[pos_start])) / (pos_end - pos_start)
   
   list(base_diff, base_rel)
+}
+
+
+# c(no_max, no_peaks, pos_peak) %<-% get_no_peaks(q, var3d, thvar, pos_start, pos_end)
+get_no_peaks <- function(q, var3d, thvar, pos_start, pos_end) {
+  no_max <- diff(sign(diff(var3d[pos_start:pos_end])))
+  no_peaks <- max(1, sum((no_max < -1) &
+    (var3d[(pos_start + 1):(pos_end - 1)] > thvar) &
+    (diff(sign(diff(q[pos_start:pos_end]))) < -1)))
+  pos_peak <- which.max(q[pos_start:pos_end]) + pos_start - 1
+  list(no_max, no_peaks, pos_peak)
 }
