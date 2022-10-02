@@ -30,10 +30,10 @@
 #' just the first npeaks are returned in the order of index.
 #' @param sortstr Boolean, Should the peaks be returned sorted in decreasing oreder of
 #' their maximum value?
-#' @param include_gregexpr Boolean (default `FALSE`), whether to include the 
+#' @param include_gregexpr Boolean (default `FALSE`), whether to include the
 #' matched `gregexpr`?
 #' @param IsPlot Boolean, whether to plot?
-#' 
+#'
 #' @note
 #' In versions before v0.3.4, `findpeaks(c(1, 2, 3, 4, 4, 3, 1))` failed to detect
 #' peaks when a flat pattern exit in the middle.
@@ -46,109 +46,116 @@
 #' hgt <- c(4, 5, 3, 4, 5, 4.2, 2.1, 4.3, 3.1, 5.1, 4.2)
 #' wdt <- c(0.005, 0.005, 0.006, 0.01, 0.01, 0.03, 0.01, 0.01, 0.005, 0.008, 0.005)
 #' pSignal <- numeric(length(x))
-#' for (i in seq(along=pos)) {
-#'     pSignal <- pSignal + hgt[i]/(1 + abs((x - pos[i])/wdt[i]))^4
+#' for (i in seq(along = pos)) {
+#'   pSignal <- pSignal + hgt[i] / (1 + abs((x - pos[i]) / wdt[i]))^4
 #' }
 #'
-#' plot(pSignal, type="l", col="navy"); grid()
-#' x <- findpeaks(pSignal, npeaks=3, h_min=4, sortstr=TRUE)
-#' points(val~pos, x$X, pch=20, col="maroon")
+#' plot(pSignal, type = "l", col = "navy")
+#' grid()
+#' x <- findpeaks(pSignal, npeaks = 3, h_min = 4, sortstr = TRUE)
+#' points(val ~ pos, x$X, pch = 20, col = "maroon")
 #'
 #' @export
-findpeaks <- function (x, nups = 1, ndowns = nups, zero = "0", peakpat = NULL,
-    minpeakheight = -Inf, minpeakdistance = 1,
-    h_min = 0, h_max = 0,
-    npeaks = 0, sortstr = FALSE,
-    include_gregexpr = FALSE,
-    IsPlot = F)
-{
-    stopifnot(is.vector(x, mode = "numeric") ||
-                  is.vector(x, mode = "logical") || length(is.na(x)) == 0)
+findpeaks <- function(x, nups = 1, ndowns = nups, zero = "0", peakpat = NULL,
+                      minpeakheight = -Inf, minpeakdistance = 1,
+                      h_min = 0, h_max = 0,
+                      npeaks = 0, sortstr = FALSE,
+                      include_gregexpr = FALSE,
+                      IsPlot = F) {
+  stopifnot(is.vector(x, mode = "numeric") ||
+    is.vector(x, mode = "logical") || length(is.na(x)) == 0)
 
-    # if (minpeakdistance < 1)
-    #     warning("Handling 'minpeakdistance < 1' is logically not possible.")
-    if (!zero %in% c("0", "+", "-"))
-        stop("Argument 'zero' can only be '0', '+', or '-'.")
+  # if (minpeakdistance < 1)
+  #     warning("Handling 'minpeakdistance < 1' is logically not possible.")
+  if (!zero %in% c("0", "+", "-")) {
+    stop("Argument 'zero' can only be '0', '+', or '-'.")
+  }
 
-    # # extend the use of findpeaks:
-    # if (IsDiff) {
-    #     xc <- sign(diff(x))
-    # } else {
-    #     xc <- x
-    # }
-    xc <- sign(diff(x))
-    xc <- paste(as.character(sign(xc)), collapse = "") %>%
-        {gsub("1", "+", gsub("-1", "-", .))}
-    xc %<>% str_replace_midzero() # in v0.3.4
-
-    if (zero != "0") xc <- gsub("0", zero, xc)
-    # if (is.null(peakpat)) peakpat <- sprintf("[+]{%d,}[-]{%d,}", nups, ndowns)
-    if (is.null(peakpat)) peakpat <- sprintf("[+]{%d,}[0]{0,}[-]{%d,}", nups, ndowns)
-
-    # Fatal bug found at 20211114
-    # Because `diff` operation lead to the length of `x` reduced one
-    # Hence x2 should be `rc + attr(rc, "match.length")`, without `-1`.
-    rc <- gregexpr(peakpat, xc)[[1]]
-
-    if (rc[1] < 0) return(NULL)
-    x1 <- rc
-    x2 <- rc + attr(rc, "match.length") # - 1
-
-    attributes(x1) <- NULL
-    attributes(x2) <- NULL
-    n <- length(x1)
-    xv <- xp <- numeric(n)
-    for (i in 1:n) {
-        # for duplicated extreme values, get the median
-        vals <- x[x1[i]:x2[i]]
-        maxI <- which(vals == max(vals, na.rm = TRUE))
-        xp[i] <- floor(median(maxI)) + x1[i] - 1
-        xv[i] <- x[xp[i]]
+  # # extend the use of findpeaks:
+  # if (IsDiff) {
+  #     xc <- sign(diff(x))
+  # } else {
+  #     xc <- x
+  # }
+  xc <- sign(diff(x))
+  xc <- paste(as.character(sign(xc)), collapse = "") %>% {
+      gsub("1", "+", gsub("-1", "-", .))
     }
-    inds <- which(xv >= minpeakheight &
-                      xv - pmin(x[x1], x[x2]) >= h_max &
-                      xv - pmax(x[x1], x[x2]) >= h_min)
-    X <- cbind(xv[inds], xp[inds], x1[inds], x2[inds])
+  xc %<>% str_replace_midzero() # in v0.3.4
 
-    if (length(X) == 0) return(NULL)
-    # remove near point where dist < minpeakdistance
-    rm_near <- function(x){
-        I <- which(diff(x[, 2]) < minpeakdistance)[1]
-        if (is.na(I) | length(x) == 0){
-            return(x)
-        }else{
-            I_del <- I + as.integer(x[I, 1] > x[I+1, 1]) #remove the min
-            x <- x[-I_del, , drop = F]
-            if (nrow(x) <= 1) return(x);
-            rm_near(x)
-        }
+  if (zero != "0") xc <- gsub("0", zero, xc)
+  # if (is.null(peakpat)) peakpat <- sprintf("[+]{%d,}[-]{%d,}", nups, ndowns)
+  if (is.null(peakpat)) peakpat <- sprintf("[+]{%d,}[0]{0,}[-]{%d,}", nups, ndowns)
+
+  # Fatal bug found at 20211114
+  # Because `diff` operation lead to the length of `x` reduced one
+  # Hence x2 should be `rc + attr(rc, "match.length")`, without `-1`.
+  rc <- gregexpr(peakpat, xc)[[1]]
+
+  if (rc[1] < 0) return(NULL)
+  x1 <- rc
+  x2 <- rc + attr(rc, "match.length") # - 1
+  attributes(x1) <- NULL
+  attributes(x2) <- NULL
+  
+  n <- length(x1)
+  xv <- xp <- numeric(n)
+  for (i in 1:n) {
+    # for duplicated extreme values, get the median
+    vals <- x[x1[i]:x2[i]]
+    maxI <- which(vals == max(vals, na.rm = TRUE))
+    xp[i] <- floor(median(maxI)) + x1[i] - 1
+    xv[i] <- x[xp[i]]
+  }
+  inds <- which(xv >= minpeakheight &
+    xv - pmin(x[x1], x[x2]) >= h_max &
+    xv - pmax(x[x1], x[x2]) >= h_min)
+  X <- cbind(xv[inds], xp[inds], x1[inds], x2[inds])
+
+  if (length(X) == 0) {
+    return(NULL)
+  }
+  # remove near point where dist < minpeakdistance
+  rm_near <- function(x) {
+    I <- which(diff(x[, 2]) < minpeakdistance)[1]
+    if (is.na(I) | length(x) == 0) {
+      return(x)
+    } else {
+      I_del <- I + as.integer(x[I, 1] > x[I + 1, 1]) # remove the min
+      x <- x[-I_del, , drop = F]
+      if (nrow(x) <= 1) {
+        return(x)
+      }
+      rm_near(x)
     }
+  }
 
-    X <- X[order(X[, 2]), ,drop = F] # update 20180122; order according to index
-    X <- rm_near(X) # sort index is necessary before `rm_near`
+  X <- X[order(X[, 2]), , drop = F] # update 20180122; order according to index
+  X <- rm_near(X) # sort index is necessary before `rm_near`
 
-    if (sortstr) { # || minpeakdistance > 1
-        sl <- sort.list(X[, 1], na.last = NA, decreasing = TRUE)
-        X <- X[sl, , drop = FALSE]
-    }
+  if (sortstr) { # || minpeakdistance > 1
+    sl <- sort.list(X[, 1], na.last = NA, decreasing = TRUE)
+    X <- X[sl, , drop = FALSE]
+  }
 
-    if (npeaks > 0 && npeaks < nrow(X)) {
-        X <- X[1:npeaks, , drop = FALSE]
-    }
+  if (npeaks > 0 && npeaks < nrow(X)) {
+    X <- X[1:npeaks, , drop = FALSE]
+  }
 
-    X <- setNames(as.data.table(X), c("val", "pos", "left", "right"))
-    if (IsPlot){
-        plot(x, type = "b"); grid()
-        points(val~pos, X, col = "blue")
-    }
-    if (include_gregexpr) listk(X, gregexpr = rc) else listk(X)
+  X <- setNames(as.data.table(X), c("val", "pos", "left", "right"))
+  if (IsPlot) {
+    plot(x, type = "b")
+    grid()
+    points(val ~ pos, X, col = "blue")
+  }
+  if (include_gregexpr) listk(X, gregexpr = rc) else listk(X)
 }
 
 #' @importFrom stringr str_replace_all
 str_replace_midzero <- function(x) {
-    replace = function(x, replacement = "+") {
-        paste(rep(replacement, nchar(x)), collapse = "")
-    }
-    str_replace_all(x, "\\++0\\++", . %>% replace("+")) %>%
-        str_replace_all("-+0-+", . %>% replace("-"))
+  replace <- function(x, replacement = "+") {
+    paste(rep(replacement, nchar(x)), collapse = "")
+  }
+  str_replace_all(x, "\\++0\\++", . %>% replace("+")) %>%
+    str_replace_all("-+0-+", . %>% replace("-"))
 }

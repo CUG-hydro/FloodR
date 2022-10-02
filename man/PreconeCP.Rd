@@ -59,12 +59,16 @@ was defined equally to one day before the end of flood event.
 \examples{
 \dontrun{
 
-dailyprec<-data.frame(Date=seq(from=as.Date("01.01.2000", format="\%d.\%m.\%Y"),
-to=as.Date("30.04.2000", format="\%d.\%m.\%Y"), by="days"),
-discharge=rbeta(121,2,20)*100)
-indT<-c(15,30,14+which.max(dailyprec[15:30,2]))
+dailyprec <- data.frame(
+  Date = seq(
+    from = as.Date("01.01.2000", format = "\%d.\%m.\%Y"),
+    to = as.Date("30.04.2000", format = "\%d.\%m.\%Y"), by = "days"
+  ),
+  discharge = rbeta(121, 2, 20) * 100
+)
+indT <- c(15, 30, 14 + which.max(dailyprec[15:30, 2]))
 
-PreconeCP(X=dailyprec,indT)
+PreconeCP(X = dailyprec, indT)
 }
 
 }

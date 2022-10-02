@@ -47,34 +47,34 @@
 #' @examples
 #' \dontrun{
 #'
-#' dailyprec<-data.frame(Date=seq(from=as.Date("01.01.2000", format="%d.%m.%Y"),
-#' to=as.Date("30.04.2000", format="%d.%m.%Y"), by="days"),
-#' discharge=rbeta(121,2,20)*100)
-#' indT<-c(15,30,14+which.max(dailyprec[15:30,2]))
+#' dailyprec <- data.frame(
+#'   Date = seq(
+#'     from = as.Date("01.01.2000", format = "%d.%m.%Y"),
+#'     to = as.Date("30.04.2000", format = "%d.%m.%Y"), by = "days"
+#'   ),
+#'   discharge = rbeta(121, 2, 20) * 100
+#' )
+#' indT <- c(15, 30, 14 + which.max(dailyprec[15:30, 2]))
 #'
-#' PreconeCP(X=dailyprec,indT)
+#' PreconeCP(X = dailyprec, indT)
 #' }
 #'
 #' @export PreconeCP
-PreconeCP<-function(Prec_table,indT,min_step=3){
+PreconeCP <- function(Prec_table, indT, min_step = 3) {
   X <- Prec_table
+  X[, 2] <- cumsum(X[, 2])
 
-  X[,2]<-cumsum(X[,2])
-
-  s1=numeric()
-  s2=numeric()
-  for (j in (min_step:(indT[1]-1))){
-    sample1=X[1:j,2]
-    sample2=X[j:indT[3],2]
-    s1[j]=summary(lm(sample1~seq_along(sample1)))$coefficients[2]
-    s2[j]=summary(lm(sample2~seq_along(sample2)))$coefficients[2]
-    xwm=which.max(s2-s1)
-
+  s1 <- numeric()
+  s2 <- numeric()
+  for (j in (min_step:(indT[1] - 1))) {
+    sample1 <- X[1:j, 2]
+    sample2 <- X[j:indT[3], 2]
+    s1[j] <- summary(lm(sample1 ~ seq_along(sample1)))$coefficients[2]
+    s2[j] <- summary(lm(sample2 ~ seq_along(sample2)))$coefficients[2]
+    xwm <- which.max(s2 - s1)
   }
-
-  return(X[c((xwm+1)),1])
+  return(X[c((xwm + 1)), 1])
 }
-
 
 
 #' Determine the begin of event precipitation
@@ -115,41 +115,43 @@ PreconeCP<-function(Prec_table,indT,min_step=3){
 #' @keywords ~classif ~ts
 #' @examples
 #' \dontrun{
-#' dailyprec<-data.frame(Date=seq(from=as.Date("01.01.2000", format="%d.%m.%Y"),
-#' to=as.Date("30.04.2000", format="%d.%m.%Y"), by="days"),
-#' discharge=rbeta(121,2,20)*100)
-#' indT<-c(15,30,14+which.max(dailyprec[15:30,2]))
-#' PrectwoCP(X=dailyprec,indT)
+#' dailyprec <- data.frame(
+#'   Date = seq(
+#'     from = as.Date("01.01.2000", format = "%d.%m.%Y"),
+#'     to = as.Date("30.04.2000", format = "%d.%m.%Y"), by = "days"
+#'   ),
+#'   discharge = rbeta(121, 2, 20) * 100
+#' )
+#' indT <- c(15, 30, 14 + which.max(dailyprec[15:30, 2]))
+#' PrectwoCP(X = dailyprec, indT)
 #' }
 #'
 #' @export PrectwoCP
-PrectwoCP<-function(Prec_table, indT, s_p=4, min_step=3){
+PrectwoCP <- function(Prec_table, indT, s_p = 4, min_step = 3) {
   X <- Prec_table
-  X[,2]<-cumsum(X[,2])
+  X[, 2] <- cumsum(X[, 2])
 
-  Mat_3=matrix(data=NA,nrow=length(1:(indT[3]+s_p)),ncol=length(1:(indT[3]+s_p)))
-  s1=numeric()
-  s2=numeric()
-  s3=numeric()
+  Mat_3 <- matrix(data = NA, nrow = length(1:(indT[3] + s_p)), ncol = length(1:(indT[3] + s_p)))
+  s1 <- numeric()
+  s2 <- numeric()
+  s3 <- numeric()
 
   #  for (j in (min_step:(indT[3]+s_p-(2*min_step)))){
-  for (j in (min_step:(indT[1]-1))){
-    for (k in ((j+(min_step-1)):(indT[3]+s_p-(min_step)))){
-      sample1=X[1:j,2]
-      sample2=X[j:k,2]
-      sample3=X[k:(indT[3]+s_p),2]
-      s1=summary(lm(sample1~seq_along(sample1)))$coefficients[2]
-      s2=summary(lm(sample2~seq_along(sample2)))$coefficients[2]
-      s3=summary(lm(sample3~seq_along(sample3)))$coefficients[2]
-      #Mat_3[j,k]=abs(s2-s1)+abs(s2-s3)
-      #Mat_3[j,k]=s2-s1+s2-s3
-      Mat_3[j,k]=abs((s1+s3)/(2*s2))
-
+  for (j in (min_step:(indT[1] - 1))) {
+    for (k in ((j + (min_step - 1)):(indT[3] + s_p - (min_step)))) {
+      sample1 <- X[1:j, 2]
+      sample2 <- X[j:k, 2]
+      sample3 <- X[k:(indT[3] + s_p), 2]
+      s1 <- summary(lm(sample1 ~ seq_along(sample1)))$coefficients[2]
+      s2 <- summary(lm(sample2 ~ seq_along(sample2)))$coefficients[2]
+      s3 <- summary(lm(sample3 ~ seq_along(sample3)))$coefficients[2]
+      # Mat_3[j,k]=abs(s2-s1)+abs(s2-s3)
+      # Mat_3[j,k]=s2-s1+s2-s3
+      Mat_3[j, k] <- abs((s1 + s3) / (2 * s2))
     }
   }
 
-  Mat_3[is.infinite(Mat_3)]=9999
-  xwm=which(Mat_3 == min(Mat_3, na.rm=TRUE), arr.ind = TRUE)
-
-  return(X[c((xwm[1]+1)),1])
+  Mat_3[is.infinite(Mat_3)] <- 9999
+  xwm <- which(Mat_3 == min(Mat_3, na.rm = TRUE), arr.ind = TRUE)
+  return(X[c((xwm[1] + 1)), 1])
 }

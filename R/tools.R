@@ -53,3 +53,58 @@ cumsum2 <- function(x, ...) {
   }
   total
 }
+
+# W: 1e6 m^3/d
+Q2W <- function(Q) {
+  Q * 86400 / 1e6
+}
+
+cal_floodInfo <- function(q, t, pos_start, pos_peak, pos_end, 
+  monthlyHQ = NULL, comm = "") 
+{
+  varnames <- c(
+    "Begin", "End", "Peak_date", "DailyMQ", "Volume", "dir_Volume",
+    "baseflow_peak", "baseflow_begin", "baseflow_end", "No_Peaks", "HQ", "HQ_dir", "Comments"
+  )
+  
+  basefl        <- approxfun(c(t[pos_start], t[pos_end]), c(q[pos_start], q[pos_end]))
+  
+  start         <- t[pos_start]
+  end           <- t[pos_end]
+  peak_MQ       <- max(q[pos_start:pos_end])
+  peak_date     <- t[pos_peak]
+  Volume        <- sum(q[pos_start:pos_end]) %>% Q2W()
+  Baseflow_peak <- basefl(peak_date)
+  Base_vol      <- integrate(basefl, lower = t[pos_start], upper = t[pos_end])$value %>% Q2W()
+  Vol_dir       <- Volume - Base_vol
+  base_start    <- basefl(start)
+  base_end      <- basefl(end)
+
+  HQ <- get_HQ(monthlyHQ, peak_date, peak_MQ)
+  HQ_dir <- HQ - Baseflow_peak
+
+  data.frame(
+    start, end, peak_date, peak_MQ, Volume,
+    Vol_dir, Baseflow_peak, base_start, base_end, no_peaks, HQ, HQ_dir, comm
+  ) %>% set_names(varnames) # info
+}
+
+# get_HQ(monthlyHQ, peak_date, peak_MQ)
+get_HQ <- function(monthlyHQ, peak_date, peak_MQ) {
+  HQ <- monthlyHQ[which(
+    (monthlyHQ[, 1] >= (peak_date - 1)) &
+    (monthlyHQ[, 1] <= (peak_date + 1))
+  ), 2]
+  HQ = ifelse(length(HQ) < 1, NA, max(HQ))
+  if (!is.na(HQ) && (HQ < peak_MQ)) HQ <- NA
+  HQ
+}
+
+# c(base_diff, base_rel) %<-% get_base_rel(t, q, pos_start, pos_end)
+get_base_rel <- function(t, q, pos_start, pos_end) {
+  basefl1 <- approxfun(c(t[pos_start], t[pos_end]), c(q[pos_start], q[pos_end]))
+  base_diff <- (basefl1(t[pos_start:pos_end]) - q[pos_start:pos_end])
+  base_rel <- (basefl1(t[pos_end]) - basefl1(t[pos_start])) / (pos_end - pos_start)
+  c(base_diff, base_rel)
+}
+

@@ -49,11 +49,15 @@ then is defined as the first of these two change points.
 }
 \examples{
 \dontrun{
-dailyprec<-data.frame(Date=seq(from=as.Date("01.01.2000", format="\%d.\%m.\%Y"),
-to=as.Date("30.04.2000", format="\%d.\%m.\%Y"), by="days"),
-discharge=rbeta(121,2,20)*100)
-indT<-c(15,30,14+which.max(dailyprec[15:30,2]))
-PrectwoCP(X=dailyprec,indT)
+dailyprec <- data.frame(
+  Date = seq(
+    from = as.Date("01.01.2000", format = "\%d.\%m.\%Y"),
+    to = as.Date("30.04.2000", format = "\%d.\%m.\%Y"), by = "days"
+  ),
+  discharge = rbeta(121, 2, 20) * 100
+)
+indT <- c(15, 30, 14 + which.max(dailyprec[15:30, 2]))
+PrectwoCP(X = dailyprec, indT)
 }
 
 }

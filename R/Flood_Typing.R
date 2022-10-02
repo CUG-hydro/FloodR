@@ -3,7 +3,6 @@
 #' This functions uses already defined flood events with relevant characteristics
 #' (like precipitation, snow-melt and peak-value) for creating a typology for the whole set of flood events
 #'
-#'
 #' @param Floods data.frame or data.table: Table with Floods, including the columns
 #' @param n_G integer: Number of rain flood-types, defaults to 3
 #' @param fast_composition logical: use the partition package for fast combination of events
@@ -38,7 +37,6 @@ Flood_typology <- function(Floods, n_G = 3L, fast_composition = FALSE,
   } else {
     mat <- n_ways(as.integer(n), as.integer(n_G))
   }
-
 
   if (is.null(Type_3_min_samplesize)) {
     min_sampleSize <- ceiling(n / (n_G * 2))

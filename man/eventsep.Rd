@@ -12,7 +12,7 @@ eventsep(
   theta = 0.25,
   ddur = 40,
   omega = 2,
-  Kappa = 0.4,
+  kappa = 0.4,
   eta = 0.1,
   delta = 0.2,
   usemed = FALSE,
@@ -45,8 +45,8 @@ days. By default it is set to ddur=40.}
 \item{omega}{integer: Threshold parameter for defining the end of a flood
 event. By default it is set to omega=2.}
 
-\item{Kappa}{numeric: Threshold parameter for defining the begin of a flood
-event. By default it is set to Kappa=0.4.}
+\item{kappa}{numeric: Threshold parameter for defining the begin of a flood
+event. By default it is set to kappa=0.4.}
 
 \item{eta}{numeric: Threshold parameter for defining the begin of a flood
 event. By default it is set to eta=0.1.}
@@ -234,7 +234,10 @@ monthlyHQ <- data.frame(
   discharge = dailyMQ$discharge[(0:48) * 12 + 1] + rnorm(49, 5, 1)
 )
 
-eventsep(dailyMQ, monthlyHQ)
+r1 <- eventsep(dailyMQ)
+head(r1)
+# r2 = eventsep(dailyMQ, monthlyHQ)
+# r2
 }
 \references{
 Klein, B. (2009): Ermittlung von Ganglinien für die

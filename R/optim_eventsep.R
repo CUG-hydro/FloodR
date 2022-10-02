@@ -5,13 +5,13 @@ quiet <- function(x) {
 }
 
 opt_fun <- function(par, Discharge, Q_upper, Q_lower, lower_tolerance, NA_mode, par_names) {
-  param_set <- c(dvar = 3, gamma = 1, theta = 0.25, ddur = 40, omega = 2, Kappa = 0.4, eta = 0.1, delta = 0.2)
+  param_set <- c(dvar = 3, gamma = 1, theta = 0.25, ddur = 40, omega = 2, kappa = 0.4, eta = 0.1, delta = 0.2)
   param_set[par_names] <- par
 
   Floods <- as.data.table(quiet(eventsep(Discharge,
     dvar = param_set["dvar"], gamma = param_set["gamma"],
     theta = param_set["theta"], ddur = param_set["ddur"], omega = param_set["omega"],
-    Kappa = param_set["Kappa"], eta = param_set["eta"], delta = param_set["delta"], NA_mode = NA_mode
+    kappa = param_set["kappa"], eta = param_set["eta"], delta = param_set["delta"], NA_mode = NA_mode
   )))
 
   Floods$ID <- 1:nrow(Floods)
@@ -41,7 +41,6 @@ opt_fun <- function(par, Discharge, Q_upper, Q_lower, lower_tolerance, NA_mode, 
 #' Optimize the parameters of eventsep by maximising flood events during high
 #' quantiles and minimizing flood events during low quantiles
 #'
-#'
 #' @param params Vector: Named vector of the stating parameters and their name,
 #' e.g. c("gamma"=1, "eta"=0.1)
 #' @param Discharge Data.frame: Discharge timeseries with Date amd Discharge column
@@ -56,11 +55,11 @@ optimize_floodsep_parameters <- function(params, Discharge,
   if (requireNamespace("rgenoud")) {
     par_names <- names(params)
 
-    lower_param_bound <- c(dvar = 2, gamma = 0, theta = 0, ddur = 1, omega = 0, Kappa = 0, eta = 0, delta = 0)[par_names]
-    upper_param_bound <- c(dvar = 8, gamma = 4, theta = 1, ddur = 200, omega = 5, Kappa = 3, eta = 1, delta = 3)[par_names]
+    lower_param_bound <- c(dvar = 2, gamma = 0, theta = 0, ddur = 1, omega = 0, kappa = 0, eta = 0, delta = 0)[par_names]
+    upper_param_bound <- c(dvar = 8, gamma = 4, theta = 1, ddur = 200, omega = 5, kappa = 3, eta = 1, delta = 3)[par_names]
     param_types <- c(
       dvar = "integer", gamma = "numeric", theta = "numeric", ddur = "integer", omega = "integer",
-      Kappa = "numeric", eta = "numeric", delta = "numeric"
+      kappa = "numeric", eta = "numeric", delta = "numeric"
     )[par_names]
 
     if (all(param_types %in% "integer")) {
