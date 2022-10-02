@@ -154,7 +154,7 @@
 #' \item{Begin}{date (d.m.Y) of the begin of the flood event} \item{End}{date
 #' (d.m.Y) of the end of the flood event} \item{Peak_date}{date (d.m.Y) of the
 #' maximum daily discharge during the flood event} \item{DailyMQ}{maximum daily
-#' mean discharge `[m³/s]` during the flood event} \item{Volume}{volume `[Mio. m³]` 
+#' mean discharge `[m³/s]` during the flood event} \item{Volume}{volume `[Mio. m³]`
 #' of the flood event calculated by the sum of all daily mean discharges
 #' during the flood event} \item{dir_Volume}{direct volume `[Mio. m³]`
 #' calculated by the difference of the volume and the baseflow. The baseflow is
@@ -202,7 +202,7 @@
 #' )
 #'
 #' eventsep(dailyMQ, monthlyHQ)
-#' @importFrom stats approxfun integrate kmeans lm quantile sd var
+#' @importFrom stats approxfun integrate kmeans lm quantile sd var setNames
 #' @export eventsep
 eventsep <- function(dailyMQ, monthlyHQ = NULL, dvar = 3, gamma = 1, theta = 0.25, ddur = 40, omega = 2,
                      Kappa = 0.4, eta = 0.1, delta = 0.2, usemed = FALSE, medbf = 0.5, NA_mode = NULL, Messages = TRUE) {
@@ -213,99 +213,47 @@ eventsep <- function(dailyMQ, monthlyHQ = NULL, dvar = 3, gamma = 1, theta = 0.2
   }
   monthlyHQ <- as.data.frame(monthlyHQ)
 
-  daten <- as.data.frame(dailyMQ[, 1:2])
-  stopifnot(any(class(daten[[1]]) %in% c("POSIXct", "POSIXt", "Date")))
+  df <- as.data.frame(dailyMQ[, 1:2]) %>% setNames(c("date", "Q"))
+  Q = df[[2]] # the second column
+  n = nrow(df)
 
-  if (any(class(daten[[1]]) == "Date")) {
-    convol <- 1L
-  } else {
-    convol <- 60^2
-  }
+  stopifnot(any(class(df[[1]]) %in% c("POSIXct", "POSIXt", "Date")))
+  convol <- ifelse(any(class(df[[1]]) == "Date"), 1L, 60^2) 
 
   if (!is.null(NA_mode)) {
-    # Interpolate single values
-    daten_NA <- daten[, 2]
-    daten_NA[!is.na(daten_NA)] <- 0
-    daten_NA[is.na(daten_NA)] <- 1
-    rl <- rle(daten_NA)
-    to_int <- which(rl$lengths <= NA_mode & rl$values == 1)
-    if (length(to_int) >= 1) {
-      for (i in 1:length(to_int)) {
-        inds_to_interp <- (sum(rl$lengths[1:(to_int[i] - 1)])):(sum(rl$lengths[1:to_int[i]]) + 1)
-        daten[inds_to_interp, 2] <- seq(daten[inds_to_interp[1], 2], daten[inds_to_interp[length(inds_to_interp)], 2],
-          length.out = length(inds_to_interp)
-        )
-      }
-    }
-    if (Messages) cat("Interpolated", length(to_int), "NA-gaps\n")
-
-    daten_NA <- daten[, 2]
-    daten_NA[!is.na(daten_NA)] <- 0
-    daten_NA[is.na(daten_NA)] <- 1
-
-    spl <- rep(NA, length(daten_NA))
-    lastNA <- FALSE
-    cc <- 1
-    for (i in 1:length(daten_NA)) {
-      if (daten_NA[i] == 0 & lastNA == TRUE) {
-        cc <- cc + 1
-        spl[i] <- cc
-        lastNA <- FALSE
-      } else if (daten_NA[i] == 0 & lastNA == FALSE) {
-        spl[i] <- cc
-        lastNA <- FALSE
-      } else {
-        spl[i] <- NA
-        lastNA <- TRUE
-      }
-    }
-    daten_list <- split(daten, spl)
-    if (length(daten_list) > 1) {
-      if (Messages) cat("Splitted timeseries into", length(daten_list), "parts, but appending results together\n")
+    list(Q, spl) %<-% na_interp_Q(Q, NA_mode)
+    dat_list <- split(df, spl)
+    if (length(dat_list) > 1) {
+      if (Messages) cat("Splitted timeseries into", length(dat_list), "parts, but appending results together\n")
     }
   } else {
-    spl <- rep(1, nrow(daten))
-    if (!identical(unique(diff(daten[, 1])), 1)) stop("Timeseries not continious!\n")
-    if (any(is.na(daten[, 2]))) stop("Timeseries does contain NA, but NA_mode is not set!\n")
-    daten_list <- list(daten)
+    spl <- rep(1, nrow(df))
+    if (!identical(unique(diff(df[, 1])), 1)) stop("Timeseries not continious!\n")
+    if (any(is.na(df[, 2]))) 
+      stop("Timeseries does contain NA, but NA_mode is not set!\n")
+    daten_list <- list(df)
   }
 
-
-
   # calculate the window-variance with window length dvar
-  data_temp_var3d <- daten
-  var3d <- rep(0, length(data_temp_var3d[, 1]))
-  for (i in dvar:length(data_temp_var3d[, 1])) {
-    var3d[i] <- var(data_temp_var3d[(i - (dvar - 1)):i, 2], na.rm = TRUE)
+  data_temp_var3d <- df
+  var3d <- rep(0, n)
+  for (i in dvar:n) {
+    var3d[i] <- var(Q[(i - (dvar - 1)):i], na.rm = TRUE)
   }
   var3d_list <- split(var3d, spl)
 
   # calculate the theshold for the variance
-  thvar <- mean(var3d[dvar:length(var3d)], na.rm = TRUE) + theta * sd(var3d[dvar:length(var3d)], na.rm = TRUE)
+  thvar <- mean(var3d[dvar:n], na.rm = TRUE) + theta * sd(var3d[dvar:n], na.rm = TRUE)
 
   # Start actual sep
   for (list_it in seq_along(daten_list)) {
     daten <- daten_list[[list_it]]
     var3d <- var3d_list[[list_it]]
 
-    diffs <- diff(daten[, 2], lag = 1)
-    diffs <- c(0, diffs)
-
     # claculate the cumulative Lag 1 differences
-    if (any(is.na(diffs))) {
-      cumdiffs <- numeric(length(diffs))
-      cumdiffs[1] <- diffs[1]
-      for (k in 2:length(diffs)) {
-        if (is.na(diffs[k])) {
-          cumdiffs[k] <- 0
-        } else {
-          cumdiffs[k] <- cumdiffs[k - 1] + diffs[k]
-        }
-      }
-    } else {
-      cumdiffs <- cumsum(diffs)
-    }
-
+    diffs <- diff(daten[, 2], lag = 1) %>% c(0, .)
+    cumdiffs <- cumsum2(diff2)
+    
     # start iterating the days until the variance threshold is exceeded
     events <- data.frame(NULL)
     n2 <- 0
@@ -351,7 +299,6 @@ eventsep <- function(dailyMQ, monthlyHQ = NULL, dvar = 3, gamma = 1, theta = 0.2
 
           # calculate the sum of the rising limb
           incsum <- sum(diffs[(pos_start + 1):peak_ind])
-
 
           # define the end of the event
           pos_end <- peak_ind + 1
@@ -623,7 +570,6 @@ eventsep <- function(dailyMQ, monthlyHQ = NULL, dvar = 3, gamma = 1, theta = 0.2
                       pos_start <- max(which(daten[(pos_start + 1):peaks[ind_ev[j]], 2] == min(daten[(pos_start + 1):peaks[ind_ev[j]], 2]))) + pos_start
                     }
 
-
                     no_max <- diff(sign(diff(var3d[pos_start:pos_end])))
                     no_peaks <- max(1, sum((no_max < -1) & (var3d[(pos_start + 1):(pos_end - 1)] > thvar) & (diff(sign(diff(daten[pos_start:pos_end, 2]))) < -1)))
 
@@ -752,6 +698,5 @@ eventsep <- function(dailyMQ, monthlyHQ = NULL, dvar = 3, gamma = 1, theta = 0.2
       events_all <- rbind(events_all, events)
     }
   }
-
   return(events_all)
 }
