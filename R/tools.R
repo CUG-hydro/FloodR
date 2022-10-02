@@ -36,6 +36,10 @@ na_interp_Q <- function(Q, NA_mode = NULL) {
   list(Q = Q, spl = spl)
 }
 
+nansum <- function(x, ...) {
+  sum(x, ..., na.rm = TRUE)
+}
+
 #' @import magrittr
 cumsum2 <- function(x, ...) {
   if (any(is.na(x))) {
@@ -59,7 +63,9 @@ Q2W <- function(Q) {
   Q * 86400 / 1e6
 }
 
-cal_floodInfo <- function(q, t, pos_start, pos_peak, pos_end, 
+# events_temp = cal_floodInfo(q, t, pos_peak, pos_start, pos_end,
+#   monthlyHQ, comm = "")
+cal_floodInfo <- function(q, t, pos_peak, pos_start, pos_end, no_peaks,
   monthlyHQ = NULL, comm = "") 
 {
   varnames <- c(
@@ -103,8 +109,10 @@ get_HQ <- function(monthlyHQ, peak_date, peak_MQ) {
 # c(base_diff, base_rel) %<-% get_base_rel(t, q, pos_start, pos_end)
 get_base_rel <- function(t, q, pos_start, pos_end) {
   basefl1 <- approxfun(c(t[pos_start], t[pos_end]), c(q[pos_start], q[pos_end]))
-  base_diff <- (basefl1(t[pos_start:pos_end]) - q[pos_start:pos_end])
-  base_rel <- (basefl1(t[pos_end]) - basefl1(t[pos_start])) / (pos_end - pos_start)
-  c(base_diff, base_rel)
-}
 
+  ind = pos_start:pos_end
+  base_diff <- (basefl1(t[ind]) - q[ind])
+  base_rel <- (basefl1(t[pos_end]) - basefl1(t[pos_start])) / (pos_end - pos_start)
+  
+  list(base_diff, base_rel)
+}

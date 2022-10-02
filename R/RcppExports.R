@@ -2,6 +2,6 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 leastSqrRegression <- function(x_in, y_in, Comb, intercept_zero = FALSE) {
-    .Call('_FloodR_leastSqrRegression', PACKAGE = 'FloodR', x_in, y_in, Comb, intercept_zero)
+    .Call('_FloodDivision_leastSqrRegression', PACKAGE = 'FloodDivision', x_in, y_in, Comb, intercept_zero)
 }
 

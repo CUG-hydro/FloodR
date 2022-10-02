@@ -15,7 +15,7 @@ eventsep(
   kappa = 0.4,
   eta = 0.1,
   delta = 0.2,
-  usemed = FALSE,
+  use_median = FALSE,
   medbf = 0.5,
   NA_mode = NULL,
   Messages = TRUE
@@ -54,13 +54,13 @@ event. By default it is set to eta=0.1.}
 \item{delta}{numeric: Threshold parameter for defining the end of a flood
 event. By default it is set to delta=0.2.}
 
-\item{usemed}{logical: Should the median of relative difference between the
+\item{use_median}{logical: Should the median of relative difference between the
 baseflow at the end and the begin be considered to determine the end of the
 flood event.}
 
 \item{medbf}{numeric: The median of relative difference between the baseflow
 at the end and the begin of all separated flood events. Used to define the
-end of the event, if usemed=TRUE.}
+end of the event, if use_median=TRUE.}
 
 \item{NA_mode}{integer: If the timeseries does contain any NA values,
 NA_mode can be used to interpolate all gaps of continious NA-values by
@@ -218,6 +218,7 @@ whole event is listed in the output first, followed by the splitted partial
 events.
 }
 \examples{
+set.seed(1)
 dailyMQ <- data.frame(
   Date = seq(
     from = as.Date("01.01.2000", format = "\%d.\%m.\%Y"),
@@ -234,10 +235,14 @@ monthlyHQ <- data.frame(
   discharge = dailyMQ$discharge[(0:48) * 12 + 1] + rnorm(49, 5, 1)
 )
 
+head(dailyMQ)
+head(monthlyHQ)
+
 r1 <- eventsep(dailyMQ)
-head(r1)
-# r2 = eventsep(dailyMQ, monthlyHQ)
-# r2
+r1
+
+r2 = eventsep(dailyMQ, monthlyHQ)
+r2
 }
 \references{
 Klein, B. (2009): Ermittlung von Ganglinien für die

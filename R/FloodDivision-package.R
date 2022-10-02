@@ -12,7 +12,7 @@
 NULL
 
 
-#' @useDynLib FloodR
+#' @useDynLib FloodDivision
 #' @importFrom Rcpp evalCpp
 #' @exportPattern "^[[:alpha:]]+"
 NULL

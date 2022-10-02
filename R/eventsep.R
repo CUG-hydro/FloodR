@@ -135,12 +135,12 @@
 #' event. By default it is set to eta=0.1.
 #' @param delta numeric: Threshold parameter for defining the end of a flood
 #' event. By default it is set to delta=0.2.
-#' @param usemed logical: Should the median of relative difference between the
+#' @param use_median logical: Should the median of relative difference between the
 #' baseflow at the end and the begin be considered to determine the end of the
 #' flood event.
 #' @param medbf numeric: The median of relative difference between the baseflow
 #' at the end and the begin of all separated flood events. Used to define the
-#' end of the event, if usemed=TRUE.
+#' end of the event, if use_median=TRUE.
 #' @param NA_mode integer: If the timeseries does contain any NA values,
 #' NA_mode can be used to interpolate all gaps of continious NA-values by
 #' linear interpolation. Only gaps smaller or equal to NA_mode (>=0) will be
@@ -189,7 +189,7 @@
 #' @importFrom stats approxfun integrate kmeans lm quantile sd var setNames
 #' @export eventsep
 eventsep <- function(dailyMQ, monthlyHQ = NULL, dvar = 3, gamma = 1, theta = 0.25, ddur = 40, omega = 2,
-                     kappa = 0.4, eta = 0.1, delta = 0.2, usemed = FALSE, medbf = 0.5, NA_mode = NULL, Messages = TRUE) {
+                     kappa = 0.4, eta = 0.1, delta = 0.2, use_median = FALSE, medbf = 0.5, NA_mode = NULL, Messages = TRUE) {
   varnames <- c(
     "Begin", "End", "Peak_date", "DailyMQ", "Volume", "dir_Volume",
     "baseflow_peak", "baseflow_begin", "baseflow_end", "No_Peaks", "HQ", "HQ_dir", "Comments"
@@ -243,7 +243,7 @@ eventsep <- function(dailyMQ, monthlyHQ = NULL, dvar = 3, gamma = 1, theta = 0.2
     
     # claculate the cumulative Lag 1 differences
     diffs <- diff(q, lag = 1) %>% c(0, .)
-    cumdiffs <- cumsum2(diff2)
+    cumdiffs <- cumsum2(diffs)
     
     # start iterating the days until the variance threshold is exceeded
     events <- data.frame(NULL)
@@ -300,33 +300,21 @@ eventsep <- function(dailyMQ, monthlyHQ = NULL, dvar = 3, gamma = 1, theta = 0.2
           c(base_diff, base_rel) %<-% get_base_rel(t, q, pos_start, pos_end)
 
           # use median baseflow difference?
-          if (usemed) {
-            while (((((
-              ( sum(diffs[(pos_peak + 1):(pos_end + omega)], na.rm = TRUE) - 
-                sum(diffs[(pos_peak + 1):(pos_end)], na.rm = TRUE) ) /
-                  sum(diffs[(pos_peak + 1):(pos_end)], na.rm = TRUE)) > (1 + delta)) ||
-                  any(base_diff > 0) || (base_rel > (2 * medbf)) ||
-                ((incsum + sum(diffs[(pos_peak + 1):pos_end], na.rm = TRUE)) > (1 * q[pos_start]))))) {
-
-              if (is.na(cumdiffs[pos_end + 1])) break
-              pos_end <- pos_end + 1
-              c(base_diff, base_rel) %<-% get_base_rel(t, q, pos_start, pos_end)
-            }
-          } else {
-            while ((((((sum(diffs[(pos_peak + 1):(pos_end + omega)], na.rm = TRUE) - 
-              sum(diffs[(pos_peak + 1):(pos_end)], na.rm = TRUE)) /
+          if (!use_median) mebdf <- -Inf
+          while (
+            (((sum(diffs[(pos_peak + 1):(pos_end + omega)], na.rm = TRUE) - 
+               sum(diffs[(pos_peak + 1):(pos_end)], na.rm = TRUE) ) /
               sum(diffs[(pos_peak + 1):(pos_end)], na.rm = TRUE)) > (1 + delta)) ||
-              any(base_diff > 0) ||
-              ((incsum + sum(diffs[(pos_peak + 1):pos_end], na.rm = TRUE)) > (1 * q[pos_start]))))) {
-
-              if (is.na(cumdiffs[pos_end + 1])) break
-              pos_end <- pos_end + 1
-              c(base_diff, base_rel) %<-% get_base_rel(t, q, pos_start, pos_end)
-            }
+            any(base_diff > 0) || (base_rel > (2 * medbf)) ||
+            ((incsum + sum(diffs[(pos_peak + 1):pos_end], na.rm = TRUE)) > (1 * q[pos_start]))
+          ) {
+            if (is.na(cumdiffs[pos_end + 1])) break
+            pos_end <- pos_end + 1
+            c(base_diff, base_rel) %<-% get_base_rel(t, q, pos_start, pos_end)
           }
 
           if (pos_end < len) pos_end <- pos_end + 1
-          if (q[pos_end] >= q[pos_end - 1]) pos_end <- pos_end - 1
+          if (q[pos_end] >= q[pos_end - 1]) pos_end <- pos_end - 1 # ensure q_end is min
 
           while (q[pos_end] < q[pos_start]) pos_end <- pos_end - 1
 
@@ -342,10 +330,10 @@ eventsep <- function(dailyMQ, monthlyHQ = NULL, dvar = 3, gamma = 1, theta = 0.2
           if (!((pos_peak == pos_start) || (No_peaks_all == 0) || (ncol(events) >= 3 && 
             t[pos_peak] %in% events[[3]]))) {
             
-            event_temp <- cal_floodInfo(q, t, pos_start, pos_peak, pos_end, 
-              monthlyHQ = NULL, comm = "")
-            event_temp$Comments <- ifelse(any(end < events$End), "aufgesetzt", " ")
-            events <- rbind(events, event_temp)
+            info <- cal_floodInfo(q, t, pos_peak, pos_start, pos_end, 
+              no_peaks, monthlyHQ = NULL, comm = " ")
+            if (any(info$End < events$End)) info$Comments <- "aufgesetzt"
+            events %<>% rbind(info)
           }
 
           # multiple peak event?
@@ -401,25 +389,9 @@ eventsep <- function(dailyMQ, monthlyHQ = NULL, dvar = 3, gamma = 1, theta = 0.2
                 pos_peak <- which.max(wave[, 2])
                 # characteristics of first wave
                 if ((pos_peak != 1)) {
-                  basefl        <- approxfun(c(1, n1), c(wave[1, 2], wave[n1, 2]))
-                  start         <- wave[1, 1]
-                  end           <- start + ((n1 - 1) * convol)
-                  peak_MQ       <- max(wave[, 2])
-                  peak_date     <- wave[pos_peak, 1]
-                  Volume        <- sum(wave[, 2]) %>% Q2W()
-                  Baseflow_peak <- basefl(pos_peak)
-                  Base_vol      <- integrate(basefl, lower = 1, upper = n1)$value %>% Q2W()
-                  Vol_dir       <- Volume - Base_vol
-                  base_start    <- basefl(1)
-                  base_end      <- basefl(n1)
-
-                  HQ <- get_HQ(monthlyHQ, peak_date, peak_MQ)
-                  HQ_dir <- HQ - Baseflow_peak
-                  comm <- "first wave"
-
-                  event_temp <- data.frame(start, end, peak_date, peak_MQ, Volume, 
-                    Vol_dir, Baseflow_peak, base_start, base_end, no_peaks, HQ, HQ_dir, comm) %>% set_names(varnames)
-                  events %<>% rbind(event_temp)
+                  info = cal_floodInfo(wave[, 2], wave[, 1], 1, n1, pos_peak, 
+                    no_peaks, monthlyHQ, comm = "first wave")
+                  events %<>% rbind(info)
                 }
 
                 # construct second wave
@@ -436,26 +408,8 @@ eventsep <- function(dailyMQ, monthlyHQ = NULL, dvar = 3, gamma = 1, theta = 0.2
 
                 # characteristics of second wave
                 if (pos_peak != 1) {
-                  basefl        <- approxfun(c(1, n2), c(sec_wave[1, 2], sec_wave[n2, 2]))
-                  start         <- sec_wave[1, 1]
-                  end           <- start + ((n2 - 1) * convol)
-                  peak_MQ       <- max(sec_wave[, 2])
-                  peak_date     <- sec_wave[pos_peak, 1]
-                  Volume        <- sum(sec_wave[, 2]) %>% Q2W()
-                  Baseflow_peak <- basefl(pos_peak)
-                  Base_vol      <- integrate(basefl, lower = 1, upper = n2)$value %>% Q2W()
-                  Vol_dir       <- Volume - Base_vol
-                  base_start    <- basefl(1)
-                  base_end      <- basefl(n2)
-
-                  HQ <- monthlyHQ[which((monthlyHQ[, 1] >= (peak_date - 1)) & (monthlyHQ[, 1] <= (peak_date + 1))), 2]
-                  HQ = ifelse(length(HQ) < 1, NA, max(HQ))
-                  if (!is.na(HQ) && (HQ < peak_MQ)) HQ <- NA
-                  HQ_dir <- HQ - Baseflow_peak
-                  comm <- "second wave"
-
-                  event_temp <- data.frame(start, end, peak_date, peak_MQ, Volume, 
-                    Vol_dir, Baseflow_peak, base_start, base_end, no_peaks, HQ, HQ_dir, comm) %>% set_names(varnames)
+                  event_temp = cal_floodInfo(sec_wave[, 2], sec_wave[, 1], pos_peak, 1, n2, 
+                    no_peaks, monthlyHQ, comm = "second wave")
                   events <- rbind(events, event_temp)
                 }
               }
@@ -476,7 +430,6 @@ eventsep <- function(dailyMQ, monthlyHQ = NULL, dvar = 3, gamma = 1, theta = 0.2
                     min(q[peaks[ind_ev[j]]:(peaks[ind_ev[j] + 1])])) {
 
                     pos_end <- peaks[ind_ev[j]] + 1
-
                     while (diffs[pos_end] <= 0) {
                       if (is.na(diffs[pos_end])) break
                       pos_end <- pos_end + 1
@@ -514,7 +467,8 @@ eventsep <- function(dailyMQ, monthlyHQ = NULL, dvar = 3, gamma = 1, theta = 0.2
                     pos_peak <- which.max(q[pos_start:pos_end]) + pos_start - 1
 
                     if (pos_peak != pos_start) {
-                      event_temp <- cal_floodInfo(q, t, pos_start, pos_peak, pos_end, monthlyHQ, comm = "overlaid")
+                      event_temp <- cal_floodInfo(q, t, pos_peak, pos_start, pos_end, 
+                      no_peaks, monthlyHQ, comm = "overlaid")
                       events %<>% rbind(event_temp)
                     }
                   }
@@ -557,14 +511,14 @@ eventsep <- function(dailyMQ, monthlyHQ = NULL, dvar = 3, gamma = 1, theta = 0.2
                   pos_peak <- which.max(q[pos_start:pos_end]) + pos_start - 1
 
                   if ((pos_peak != pos_start)) {
-                    event_temp <- cal_floodInfo(q, t, pos_start, pos_peak, pos_end, monthlyHQ, comm = "overlaid")
+                    event_temp <- cal_floodInfo(q, t, pos_peak, pos_start, pos_end, 
+                      no_peaks, monthlyHQ, comm = "overlaid")
                     t <- rbind(events, event_temp)
                   }
                 }
               }
             }
           }
-
           i <- max(pos_end, i + endvar, old_start + n2 - 1)
         }
       }

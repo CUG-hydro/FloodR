@@ -16,7 +16,7 @@ devtools::load_all()
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# FloodR
+# FloodDivision
 
 ## Description
 This package provides tools for:
@@ -38,7 +38,7 @@ remotes::install_github(repo = "PhilippBuehler/FloodR")
 ```
 
 ```{r}
-library("FloodR")
+library("FloodDivision")
 ```
 
 

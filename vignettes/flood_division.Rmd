@@ -15,7 +15,7 @@ knitr::opts_chunk$set(
 ```
 
 ```{r setup}
-library(FloodR)
+library(FloodDivision)
 ```
 
 # 洪水事件划分
@@ -27,9 +27,12 @@ For the separation of flood events from a discharge timeseries, we need the dail
 date_begin = as.Date("01.01.2000", format = "%d.%m.%Y")
 date_end = as.Date("01.01.2004", format="%d.%m.%Y")
 
+set.seed(1)
 df_q <- data.frame(
   Date = seq(date_begin, date_end, "day"),
   discharge = rbeta(1462, 2, 20)*100) # dummy data
+head(df_q)
+
 flood_events <- eventsep(df_q)
 head(flood_events)
 ```

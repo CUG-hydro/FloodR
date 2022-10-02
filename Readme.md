@@ -1,9 +1,9 @@
 
-    ## ℹ Loading FloodR
+    ## ℹ Loading FloodDivision
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# FloodR
+# FloodDivision
 
 ## Description
 
@@ -26,7 +26,7 @@ remotes::install_github(repo = "PhilippBuehler/FloodR")
 ```
 
 ``` r
-library("FloodR")
+library("FloodDivision")
 ```
 
 ### Separation of flood events

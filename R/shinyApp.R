@@ -141,9 +141,9 @@ Run_WebFlood <- function(Discharge = NULL, Precipitation = NULL, Catchment_Prope
 
   if (any(c(sapply(PKGENVIR$Discharge, function(x) class(x[[1]]))) %in% c("POSIXct", "POSIXt"))) {
     print("hourly")
-    shiny::runApp(appDir = system.file("shinyApp_hourly", package = "FloodR"))
+    shiny::runApp(appDir = system.file("shinyApp_hourly", package = "FloodDivision"))
   } else {
     print("daily")
-    shiny::runApp(appDir = system.file("shinyApp_daily", package = "FloodR"))
+    shiny::runApp(appDir = system.file("shinyApp_daily", package = "FloodDivision"))
   }
 }

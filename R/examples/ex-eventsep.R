@@ -1,3 +1,4 @@
+set.seed(1)
 dailyMQ <- data.frame(
   Date = seq(
     from = as.Date("01.01.2000", format = "%d.%m.%Y"),
@@ -14,7 +15,11 @@ monthlyHQ <- data.frame(
   discharge = dailyMQ$discharge[(0:48) * 12 + 1] + rnorm(49, 5, 1)
 )
 
+head(dailyMQ)
+head(monthlyHQ)
+
 r1 <- eventsep(dailyMQ)
-head(r1)
-# r2 = eventsep(dailyMQ, monthlyHQ)
-# r2
+r1
+
+r2 = eventsep(dailyMQ, monthlyHQ)
+r2

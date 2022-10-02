@@ -1,4 +1,4 @@
-Package: FloodR
+Package: FloodDivision
 Type: Package
 Title: Separation and typing of flood events and typewise staistical return periods (TMPS)
 Version: 0.6.0
