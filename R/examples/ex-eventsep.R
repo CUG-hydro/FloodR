@@ -18,8 +18,10 @@ monthlyHQ <- data.frame(
 head(dailyMQ)
 head(monthlyHQ)
 
-r1 <- eventsep(dailyMQ)
-r1
+r_old <- FloodR::eventsep(dailyMQ)
+r_new <- eventsep(dailyMQ)
+all.equal(r_old, r_new)
+
 
 r2 = eventsep(dailyMQ, monthlyHQ)
 r2

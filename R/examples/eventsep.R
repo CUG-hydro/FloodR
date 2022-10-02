@@ -185,11 +185,16 @@
 #'  Hydrological Sciences Journal, 64(15), 1867–1892. https://doi.org/10.1080/02626667.2019.1679376
 #' @keywords ~classif ~ts
 #' @example R/examples/ex-eventsep.R
-#'
+#' 
 #' @importFrom stats approxfun integrate kmeans lm quantile sd var setNames
 #' @export eventsep
 eventsep <- function(dailyMQ, monthlyHQ = NULL, dvar = 3, gamma = 1, theta = 0.25, ddur = 40, omega = 2,
                      kappa = 0.4, eta = 0.1, delta = 0.2, use_median = FALSE, medbf = 0.5, NA_mode = NULL, Messages = TRUE) {
+  varnames <- c(
+    "Begin", "End", "Peak_date", "DailyMQ", "Volume", "dir_Volume",
+    "baseflow_peak", "baseflow_begin", "baseflow_end", "No_Peaks", "HQ", "HQ_dir", "Comments"
+  )
+
   if (is.null(monthlyHQ)) {
     monthlyHQ <- data.frame(NA, NA)
   } else {
@@ -197,237 +202,142 @@ eventsep <- function(dailyMQ, monthlyHQ = NULL, dvar = 3, gamma = 1, theta = 0.2
   }
   monthlyHQ <- as.data.frame(monthlyHQ)
 
-  daten <- as.data.frame(dailyMQ[, 1:2])
-  stopifnot(any(class(daten[[1]]) %in% c("POSIXct", "POSIXt", "Date")))
+  df <- as.data.frame(dailyMQ[, 1:2]) %>% setNames(c("date", "Q"))
+  Q = df[[2]] # the second column
+  n = nrow(df)
 
-  convol = ifelse(any(class(daten[[1]]) == "Date"), 1L, 3600L) 
+  stopifnot(any(class(df[[1]]) %in% c("POSIXct", "POSIXt", "Date")))
+  convol <- ifelse(any(class(df[[1]]) == "Date"), 1L, 60^2) 
 
   if (!is.null(NA_mode)) {
-    # Interpolate single values
-    daten_NA <- daten[, 2]
-    daten_NA[!is.na(daten_NA)] <- 0
-    daten_NA[is.na(daten_NA)] <- 1
-    rl <- rle(daten_NA)
-    to_int <- which(rl$lengths <= NA_mode & rl$values == 1)
-    if (length(to_int) >= 1) {
-      for (i in 1:length(to_int)) {
-        inds_to_interp <- (sum(rl$lengths[1:(to_int[i] - 1)])):(sum(rl$lengths[1:to_int[i]]) + 1)
-        daten[inds_to_interp, 2] <- seq(daten[inds_to_interp[1], 2], daten[inds_to_interp[length(inds_to_interp)], 2],
-          length.out = length(inds_to_interp)
-        )
-      }
-    }
-    if (Messages) cat("Interpolated", length(to_int), "NA-gaps\n")
-
-    daten_NA <- daten[, 2]
-    daten_NA[!is.na(daten_NA)] <- 0
-    daten_NA[is.na(daten_NA)] <- 1
-
-    spl <- rep(NA, length(daten_NA))
-    lastNA <- FALSE
-    cc <- 1
-    for (i in 1:length(daten_NA)) {
-      if (daten_NA[i] == 0 & lastNA == TRUE) {
-        cc <- cc + 1
-        spl[i] <- cc
-        lastNA <- FALSE
-      } else if (daten_NA[i] == 0 & lastNA == FALSE) {
-        spl[i] <- cc
-        lastNA <- FALSE
-      } else {
-        spl[i] <- NA
-        lastNA <- TRUE
-      }
-    }
-    daten_list <- split(daten, spl)
-    if (length(daten_list) > 1) {
-      if (Messages) cat("Splitted timeseries into", length(daten_list), "parts, but appending results together\n")
-    }
+    c(Q, spl) %<-% na_interp_Q(Q, NA_mode)
+    dat_list <- split(df, spl)
+    if (length(dat_list) > 1  && Messages) 
+      cat("Splitted timeseries into", length(dat_list), "parts, but appending results together\n")
   } else {
-    spl <- rep(1, nrow(daten))
-    if (!identical(unique(diff(daten[, 1])), 1)) stop("Timeseries not continious!\n")
-    if (any(is.na(daten[, 2]))) stop("Timeseries does contain NA, but NA_mode is not set!\n")
-    daten_list <- list(daten)
+    spl <- rep(1, nrow(df))
+    if (!identical(unique(diff(df[, 1])), 1)) stop("Timeseries not continious!\n")
+    if (any(is.na(df[, 2]))) 
+      stop("Timeseries does contain NA, but NA_mode is not set!\n")
+    daten_list <- list(df)
   }
-  
 
   # calculate the window-variance with window length dvar
-  data_temp_var3d <- daten
-  var3d <- rep(0, length(data_temp_var3d[, 1]))
-  for (i in dvar:length(data_temp_var3d[, 1])) {
-    var3d[i] <- var(data_temp_var3d[(i - (dvar - 1)):i, 2], na.rm = TRUE)
+  data_temp_var3d <- df
+  var3d <- rep(0, n)
+  for (i in dvar:n) {
+    var3d[i] <- var(Q[(i - (dvar - 1)):i], na.rm = TRUE)
   }
   var3d_list <- split(var3d, spl)
 
   # calculate the theshold for the variance
-  thvar <- mean(var3d[dvar:length(var3d)], na.rm = TRUE) + theta * sd(var3d[dvar:length(var3d)], na.rm = TRUE)
+  thvar <- mean(var3d[dvar:n], na.rm = TRUE) + theta * sd(var3d[dvar:n], na.rm = TRUE)
 
   # Start actual sep
   for (list_it in seq_along(daten_list)) {
     daten <- daten_list[[list_it]]
     var3d <- var3d_list[[list_it]]
-
-    diffs <- diff(daten[, 2], lag = 1)
-    diffs <- c(0, diffs)
-
+    q = daten$Q
+    t = daten$date
+    len = length(q)
+    
     # claculate the cumulative Lag 1 differences
-    if (any(is.na(diffs))) {
-      cumdiffs <- numeric(length(diffs))
-      cumdiffs[1] <- diffs[1]
-      for (k in 2:length(diffs)) {
-        if (is.na(diffs[k])) {
-          cumdiffs[k] <- 0
-        } else {
-          cumdiffs[k] <- cumdiffs[k - 1] + diffs[k]
-        }
-      }
-    } else {
-      cumdiffs <- cumsum(diffs)
-    }
-
+    diffs <- diff(q, lag = 1) %>% c(0, .)
+    cumdiffs <- cumsum2(diffs)
+    
     # start iterating the days until the variance threshold is exceeded
     events <- data.frame(NULL)
     n2 <- 0
-    i <- 10
-    while (i < length(var3d)) {
+    i <- 10 # 前10个不予考虑
+    
+    while (i < len) {
       old_start <- 0
       i <- i + 1
       if (!is.na(var3d[i])) {
         if (var3d[i] > thvar) {
-          var3dpart <- var3d[(i):length(var3d)]
-          endvar <- min(which(var3dpart < thvar)[1], length(var3dpart), na.rm = TRUE)
-          pos_peak <- min((i + which.max(var3dpart[1:endvar]) - 1), (length(var3d) - 10))
-          while (daten[pos_peak - 1, 2] > daten[pos_peak, 2]) {
+          .var3d <- var3d[i:len]
+          endvar <- min(which(.var3d < thvar)[1], length(.var3d), na.rm = TRUE) # the first point of exceeding
+          pos_peak <- min(which.max(.var3d[1:endvar]) + i - 1, len - 10)        # 左右均有10d
+          while (q[pos_peak - 1] > q[pos_peak]) {
             pos_peak <- pos_peak - 1
           }
-
 
           # chosse the event start as the days where the lag 1  differences are negative the last time
           pos_start <- max(which(diffs[1:(pos_peak - 1)] < 0), 3)
 
-          # modify start according to the assumptions
-          while (((daten[pos_start + 1, 2] - daten[pos_start, 2]) <
-            ((daten[pos_peak, 2] - daten[pos_start, 2]) * eta)) && (pos_start < pos_peak - 1)) {
+          # modify start according to the assumptions, Fisher2021, Eq.1
+          while (((q[pos_start + 1] - q[pos_start]) < ((q[pos_peak] - q[pos_start]) * eta)) && 
+            (pos_start < pos_peak - 1)) {
             pos_start <- pos_start + 1
           }
 
+          # Fisher2021, Eq.2, preflood
           gammaneu <- min(gamma, pos_start - 2)
           maxstart <- matrix(NA, nrow = gammaneu, ncol = gammaneu + 1)
-          for (z in 1:gammaneu) {
-            for (v in (z + 1):(gammaneu + 1)) {
-              maxstart[z, v] <- daten[pos_start - z, 2] - daten[pos_start - v, 2]
+          for (i in 1:gammaneu) {
+            for (j in seq(i + 1, gammaneu + 1)) {
+              maxstart[i, j] <- q[pos_start - i] - q[pos_start - j]
             }
           }
 
-          if ((max(maxstart, na.rm = TRUE) > ((daten[pos_peak, 2] - daten[pos_start, 2]) * kappa)) &&
-            (daten[pos_start - 2, 2] < daten[pos_peak, 2])) {
-            pos_start <- max(pos_start - which(maxstart == max(maxstart, na.rm = TRUE), arr.ind = TRUE)[2], 3)
+          if ((max(maxstart, na.rm = TRUE) > ((q[pos_peak] - q[pos_start]) * kappa)) &&
+            (q[pos_start - 2] < q[pos_peak])) {
+            
+            m = which(maxstart == max(maxstart, na.rm = TRUE), arr.ind = TRUE)[2]
+            pos_start <- max(pos_start - m, 3)
           }
 
-          if (daten[pos_start, 2] > daten[pos_start + 1, 2]) pos_start <- pos_start + 1
-          while (daten[pos_peak, 2] <= daten[pos_peak + 1, 2] && pos_peak < (length(var3d) - 2)) {
+          if (q[pos_start] > q[pos_start + 1]) pos_start <- pos_start + 1
+          while (q[pos_peak] <= q[pos_peak + 1] && pos_peak < (len - 2)) {
             pos_peak <- pos_peak + 1
           }
 
           # calculate the sum of the rising limb
           incsum <- sum(diffs[(pos_start + 1):pos_peak])
 
-
-
           # define the end of the event
           pos_end <- pos_peak + 1
-
-
-          basefl1 <- approxfun(c(daten[pos_start, 1], daten[pos_end, 1]), c(daten[pos_start, 2], daten[pos_end, 2]))
-          base_diff <- (basefl1(daten[pos_start:pos_end, 1]) - daten[pos_start:pos_end, 2])
-          base_rel <- (basefl1(daten[pos_end, 1]) - basefl1(daten[pos_start, 1])) / (pos_end - pos_start)
-
+          c(base_diff, base_rel) %<-% get_base_rel(t, q, pos_start, pos_end)
 
           # use median baseflow difference?
-          if (use_median) {
-            while ((((((sum(diffs[(pos_peak + 1):(pos_end + omega)], na.rm = TRUE) - sum(diffs[(pos_peak + 1):(pos_end)], na.rm = TRUE)) /
+          if (!use_median) mebdf <- -Inf
+          while (
+            (((sum(diffs[(pos_peak + 1):(pos_end + omega)], na.rm = TRUE) - 
+               sum(diffs[(pos_peak + 1):(pos_end)], na.rm = TRUE) ) /
               sum(diffs[(pos_peak + 1):(pos_end)], na.rm = TRUE)) > (1 + delta)) ||
-              any(base_diff > 0) || (base_rel > (2 * medbf)) ||
-              ((incsum + sum(diffs[(pos_peak + 1):pos_end], na.rm = TRUE)) > (1 * daten[pos_start, 2]))))) {
-              if (is.na(cumdiffs[pos_end + 1])) {
-                break
-              }
-              pos_end <- pos_end + 1
-
-              basefl1 <- approxfun(c(daten[pos_start, 1], daten[pos_end, 1]), c(daten[pos_start, 2], daten[pos_end, 2]))
-              base_diff <- (basefl1(daten[pos_start:pos_end, 1]) - daten[pos_start:pos_end, 2])
-              base_rel <- (basefl1(daten[pos_end, 1]) - basefl1(daten[pos_start, 1])) / (pos_end - pos_start)
-            }
-          } else {
-            while ((((((sum(diffs[(pos_peak + 1):(pos_end + omega)], na.rm = TRUE) - sum(diffs[(pos_peak + 1):(pos_end)], na.rm = TRUE)) /
-              sum(diffs[(pos_peak + 1):(pos_end)], na.rm = TRUE)) > (1 + delta)) ||
-              any(base_diff > 0) ||
-              ((incsum + sum(diffs[(pos_peak + 1):pos_end], na.rm = TRUE)) > (1 * daten[pos_start, 2]))))) {
-              if (is.na(cumdiffs[pos_end + 1])) {
-                break
-              }
-              pos_end <- pos_end + 1
-
-              basefl1 <- approxfun(c(daten[pos_start, 1], daten[pos_end, 1]), c(daten[pos_start, 2], daten[pos_end, 2]))
-              base_diff <- (basefl1(daten[pos_start:pos_end, 1]) - daten[pos_start:pos_end, 2])
-              base_rel <- (basefl1(daten[pos_end, 1]) - basefl1(daten[pos_start, 1])) / (pos_end - pos_start)
-            }
+            any(base_diff > 0) || (base_rel > (2 * medbf)) ||
+            ((incsum + sum(diffs[(pos_peak + 1):pos_end], na.rm = TRUE)) > (1 * q[pos_start]))
+          ) {
+            if (is.na(cumdiffs[pos_end + 1])) break
+            pos_end <- pos_end + 1
+            c(base_diff, base_rel) %<-% get_base_rel(t, q, pos_start, pos_end)
           }
 
-          if (pos_end < length(daten[, 1])) pos_end <- pos_end + 1
+          if (pos_end < len) pos_end <- pos_end + 1
+          if (q[pos_end] >= q[pos_end - 1]) pos_end <- pos_end - 1 # ensure q_end is min
 
-          if (daten[pos_end, 2] >= daten[pos_end - 1, 2]) pos_end <- pos_end - 1
+          while (q[pos_end] < q[pos_start]) pos_end <- pos_end - 1
 
-          while (daten[pos_end, 2] < daten[pos_start, 2]) pos_end <- pos_end - 1
-
-
-          No_peaks_all <- sum(diff(sign(diff(daten[pos_start:pos_end, 2]))) < -1)
+          No_peaks_all <- sum(diff(sign(diff(q[pos_start:pos_end]))) < -1)
 
           no_max <- diff(sign(diff(var3d[pos_start:pos_end])))
           no_peaks <- max(1, sum((no_max < -1) & (var3d[(pos_start + 1):(pos_end - 1)] > thvar) &
-            (diff(sign(diff(daten[pos_start:pos_end, 2]))) < -1)))
+            (diff(sign(diff(q[pos_start:pos_end]))) < -1)))
 
-          pos_peak <- which.max(daten[pos_start:pos_end, 2]) + pos_start - 1
-
+          pos_peak <- which.max(q[pos_start:pos_end]) + pos_start - 1
 
           # create output for event
-          if (!((pos_peak == pos_start) || (No_peaks_all == 0) || (ncol(events) >= 3 && daten[pos_peak, 1] %in% events[[3]]))) {
-            basefl <- approxfun(c(daten[pos_start, 1], daten[pos_end, 1]), c(daten[pos_start, 2], daten[pos_end, 2]))
-            start <- daten[pos_start, 1]
-            end <- daten[pos_end, 1]
-            peak_MQ <- max(daten[(pos_start):(pos_end), 2])
-            peak_date <- daten[pos_peak, 1]
-            Volume <- sum(daten[(pos_start):(pos_end), 2]) * 24 * 60 * 60 / 1000000
-            Baseflow_peak <- basefl(peak_date)
-            Base_vol <- integrate(basefl, lower = daten[pos_start, 1], upper = daten[pos_end, 1])$value * 24 * 60 * 60 / 1000000
-            Vol_dir <- Volume - Base_vol
-            base_start <- basefl(start)
-            base_end <- basefl(end)
-            HQ <- monthlyHQ[which((monthlyHQ[, 1] >= (peak_date - 1)) & (monthlyHQ[, 1] <= (peak_date + 1))), 2]
-            if (length(HQ) < 1) {
-              HQ <- NA
-            } else {
-              HQ <- max(HQ)
-            }
-            if (!is.na(HQ) && (HQ < peak_MQ)) {
-              HQ <- NA
-            }
-            HQ_dir <- HQ - Baseflow_peak
-            comm <- " "
-
-            if (any(end < events$End)) comm <- "aufgesetzt"
-
-            event_temp <- data.frame(start, end, peak_date, peak_MQ, Volume, Vol_dir, Baseflow_peak, base_start, base_end, no_peaks, HQ, HQ_dir, comm)
-            names(event_temp) <- c(
-              "Begin", "End", "Peak_date", "DailyMQ", "Volume", "dir_Volume",
-              "baseflow_peak", "baseflow_begin", "baseflow_end", "No_Peaks", "HQ", "HQ_dir", "Comments"
-            )
-            events <- rbind(events, event_temp)
+          if (!((pos_peak == pos_start) || (No_peaks_all == 0) || (ncol(events) >= 3 && 
+            t[pos_peak] %in% events[[3]]))) {
+            
+            info <- cal_floodInfo(q, t, pos_peak, pos_start, pos_end, 
+              no_peaks, monthlyHQ = NULL, comm = " ")
+            if (any(info$End < events$End)) info$Comments <- "aufgesetzt"
+            events %<>% rbind(info)
           }
 
           # multiple peak event?
           # if(No_peaks_all>=400) browser()
-
           if (No_peaks_all > 1) {
 
             # possible double-peaked event
@@ -438,14 +348,14 @@ eventsep <- function(dailyMQ, monthlyHQ = NULL, dvar = 3, gamma = 1, theta = 0.2
               old_end <- pos_end
 
               maxis <- mapply(function(x, y) {
-                max(daten[x, 2], daten[y, 2])
+                max(q[x], q[y])
               }, x = peaks[1:(length(peaks) - 1)], y = peaks[2:length(peaks)])
               minmax <- mapply(function(x, y) {
-                min(daten[x, 2], daten[y, 2])
+                min(q[x], q[y])
               }, x = peaks[1:(length(peaks) - 1)], y = peaks[2:length(peaks)])
 
               minis <- mapply(function(x, y) {
-                min(daten[x:y, 2])
+                min(q[x:y])
               }, x = peaks[1:(length(peaks) - 1)], y = peaks[2:length(peaks)])
 
               # test the condition for double-peaked events
@@ -454,14 +364,11 @@ eventsep <- function(dailyMQ, monthlyHQ = NULL, dvar = 3, gamma = 1, theta = 0.2
                 max_diff <- minmax - minis
 
                 ind_diff <- which(((0.4 * maxis) >= minis) & ((maxis * 0.2) <= minmax) & (minis <= (0.7 * minmax)))
-
                 ind2 <- which.max(max_diff[ind_diff])
-
                 pos_peak <- peaks[ind_diff[ind2]]
 
                 pos_start <- old_start
-
-                pos_end <- which.min(daten[pos_peak:peaks[ind_diff[ind2] + 1], 2]) + pos_peak - 1
+                pos_end <- which.min(q[pos_peak:peaks[ind_diff[ind2] + 1]]) + pos_peak - 1
 
                 ## construct first wave
                 wave <- daten[pos_start:pos_end, ]
@@ -470,50 +377,22 @@ eventsep <- function(dailyMQ, monthlyHQ = NULL, dvar = 3, gamma = 1, theta = 0.2
                 n_save <- n1
 
                 while (daten[old_end, 2] < wave[n1, 2]) {
-                  next_ind <- which(daten[(pos_start + n1 + 1):old_end, 2] < wave[n1, 2])[1] + pos_start + n1 ## positiv!!!
-
+                  next_ind <- which(q[(pos_start + n1 + 1):old_end] < wave[n1, 2])[1] + pos_start + n1 ## positiv!!!
                   wave <- rbind(wave, daten[next_ind, ])
-
                   n1 <- length(wave[, 1])
                 }
 
                 no_max <- diff(sign(diff(var3d[old_start:(old_start + n1 - 1)])))
-                no_peaks <- max(1, sum((no_max < -1) & (var3d[(old_start + 1):(old_start + n1 - 2)] > thvar) & (diff(sign(diff(daten[old_start:(old_start + n1 - 1), 2]))) < -1)))
+                no_peaks <- max(1, sum((no_max < -1) & (var3d[(old_start + 1):(old_start + n1 - 2)] > thvar) & 
+                  (diff(sign(diff(daten[old_start:(old_start + n1 - 1), 2]))) < -1)))
 
                 pos_peak <- which.max(wave[, 2])
                 # characteristics of first wave
                 if ((pos_peak != 1)) {
-                  basefl <- approxfun(c(1, n1), c(wave[1, 2], wave[n1, 2]))
-                  start <- wave[1, 1]
-                  end <- start + ((n1 - 1) * convol)
-                  peak_MQ <- max(wave[, 2])
-                  peak_date <- wave[pos_peak, 1]
-                  Volume <- sum(wave[, 2]) * 24 * 60 * 60 / 1000000
-                  Baseflow_peak <- basefl(pos_peak)
-                  Base_vol <- integrate(basefl, lower = 1, upper = n1)$value * 24 * 60 * 60 / 1000000
-                  Vol_dir <- Volume - Base_vol
-                  base_start <- basefl(1)
-                  base_end <- basefl(n1)
-                  HQ <- monthlyHQ[which((monthlyHQ[, 1] >= (peak_date - 1)) & (monthlyHQ[, 1] <= (peak_date + 1))), 2]
-                  if (length(HQ) < 1) {
-                    HQ <- NA
-                  } else {
-                    HQ <- max(HQ)
-                  }
-                  if (!is.na(HQ) && (HQ < peak_MQ)) {
-                    HQ <- NA
-                  }
-                  HQ_dir <- HQ - Baseflow_peak
-                  comm <- "first wave"
-
-                  event_temp <- data.frame(start, end, peak_date, peak_MQ, Volume, Vol_dir, Baseflow_peak, base_start, base_end, no_peaks, HQ, HQ_dir, comm)
-                  names(event_temp) <- c(
-                    "Begin", "End", "Peak_date", "DailyMQ", "Volume", "dir_Volume",
-                    "baseflow_peak", "baseflow_begin", "baseflow_end", "No_Peaks", "HQ", "HQ_dir", "Comments"
-                  )
-                  events <- rbind(events, event_temp)
+                  info = cal_floodInfo(wave[, 2], wave[, 1], 1, n1, pos_peak, 
+                    no_peaks, monthlyHQ, comm = "first wave")
+                  events %<>% rbind(info)
                 }
-
 
                 # construct second wave
                 sec_wave <- daten[pos_end:old_end, ]
@@ -522,46 +401,18 @@ eventsep <- function(dailyMQ, monthlyHQ = NULL, dvar = 3, gamma = 1, theta = 0.2
                 n2 <- length(sec_wave[, 2])
 
                 no_max <- diff(sign(diff(var3d[(old_start + n1 - 1):old_end])))
-                no_peaks <- max(1, sum((no_max < -1) & (var3d[(old_start + n1):(old_end - 1)] > thvar) & (diff(sign(diff(daten[(old_start + n1 - 1):old_end, 2]))) < -1)))
-
+                no_peaks <- max(1, sum((no_max < -1) & (var3d[(old_start + n1):(old_end - 1)] > thvar) & 
+                  (diff(sign(diff(daten[(old_start + n1 - 1):old_end, 2]))) < -1)))
 
                 pos_peak <- which.max(daten[pos_end:old_end, 2])
 
                 # characteristics of second wave
                 if (pos_peak != 1) {
-                  basefl <- approxfun(c(1, n2), c(sec_wave[1, 2], sec_wave[n2, 2]))
-                  start <- sec_wave[1, 1]
-                  end <- start + ((n2 - 1) * convol)
-                  peak_MQ <- max(sec_wave[, 2])
-                  peak_date <- sec_wave[pos_peak, 1]
-                  Volume <- sum(sec_wave[, 2]) * 24 * 60 * 60 / 1000000
-                  Baseflow_peak <- basefl(pos_peak)
-                  Base_vol <- integrate(basefl, lower = 1, upper = n2)$value * 24 * 60 * 60 / 1000000
-                  Vol_dir <- Volume - Base_vol
-                  base_start <- basefl(1)
-                  base_end <- basefl(n2)
-                  HQ <- monthlyHQ[which((monthlyHQ[, 1] >= (peak_date - 1)) & (monthlyHQ[, 1] <= (peak_date + 1))), 2]
-                  if (length(HQ) < 1) {
-                    HQ <- NA
-                  } else {
-                    HQ <- max(HQ)
-                  }
-                  if (!is.na(HQ) && (HQ < peak_MQ)) {
-                    HQ <- NA
-                  }
-                  HQ_dir <- HQ - Baseflow_peak
-                  comm <- "second wave"
-
-                  event_temp <- data.frame(start, end, peak_date, peak_MQ, Volume, Vol_dir, Baseflow_peak, base_start, base_end, no_peaks, HQ, HQ_dir, comm)
-                  names(event_temp) <- c(
-                    "Begin", "End", "Peak_date", "DailyMQ", "Volume", "dir_Volume",
-                    "baseflow_peak", "baseflow_begin", "baseflow_end", "No_Peaks", "HQ", "HQ_dir", "Comments"
-                  )
+                  event_temp = cal_floodInfo(sec_wave[, 2], sec_wave[, 1], pos_peak, 1, n2, 
+                    no_peaks, monthlyHQ, comm = "second wave")
                   events <- rbind(events, event_temp)
                 }
               }
-
-
               # possible overlaid event
             } else {
               peaks <- pos_start + which(diff(sign(diffs[pos_start:pos_end])) < -1) - 1
@@ -573,82 +424,52 @@ eventsep <- function(dailyMQ, monthlyHQ = NULL, dvar = 3, gamma = 1, theta = 0.2
               if (any(diff(daten[real_peaks, 1]) > 7)) {
                 ind_ev <- match(real_peaks[which(diff(daten[real_peaks, 1]) > 7)], peaks)
 
-
                 # split the overlaid waves from the main event
                 for (j in 1:length(ind_ev)) {
-                  if ((0.5 * max(daten[peaks[ind_ev[j]], 2], daten[peaks[ind_ev[j] + 1], 2])) >= min(daten[peaks[ind_ev[j]]:(peaks[ind_ev[j] + 1]), 2])) {
-                    pos_end <- peaks[ind_ev[j]] + 1
+                  if ((0.5 * max(q[peaks[ind_ev[j]]], q[peaks[ind_ev[j] + 1]])) >= 
+                    min(q[peaks[ind_ev[j]]:(peaks[ind_ev[j] + 1])])) {
 
+                    pos_end <- peaks[ind_ev[j]] + 1
                     while (diffs[pos_end] <= 0) {
-                      if (is.na(diffs[pos_end])) {
-                        break
-                      }
+                      if (is.na(diffs[pos_end])) break
                       pos_end <- pos_end + 1
                     }
 
-
-                    if (daten[pos_end, 2] > daten[pos_end - 1, 2]) {
+                    if (q[pos_end] > q[pos_end - 1]) {
                       pos_end <- pos_end - 1
                     }
                     pos_peak <- max(peaks[max(ind_ev[j - 1] + 1, 1)])
 
                     pos_start <- pos_peak - 1
                     while (diffs[pos_start] >= 0) {
-                      if (is.na(diffs[pos_start])) {
-                        break
-                      }
+                      if (is.na(diffs[pos_start])) break
                       pos_start <- pos_start - 1
                     }
-                    while (daten[pos_start, 2] < daten[pos_end, 2]) {
+                    while (q[pos_start] < q[pos_end]) {
                       pos_start <- pos_start + 1
                     }
                     pos_start <- pos_start - 1
 
-                    if (daten[pos_start, 2] >= daten[pos_start + 1, 2]) {
+                    if (q[pos_start] >= q[pos_start + 1]) {
                       pos_start <- pos_start + 1
                     }
 
-                    if (any(daten[(pos_start + 1):peaks[ind_ev[j]], 2] < daten[pos_start, 2])) {
-                      pos_start <- max(which(daten[(pos_start + 1):peaks[ind_ev[j]], 2] == min(daten[(pos_start + 1):peaks[ind_ev[j]], 2]))) + pos_start
+                    if (any(daten[(pos_start + 1):peaks[ind_ev[j]], 2] < q[pos_start])) {
+                      pos_start <- max(which(daten[(pos_start + 1):peaks[ind_ev[j]], 2] == 
+                        min(daten[(pos_start + 1):peaks[ind_ev[j]], 2]))) + pos_start
                     }
 
-
                     no_max <- diff(sign(diff(var3d[pos_start:pos_end])))
-                    no_peaks <- max(1, sum((no_max < -1) & (var3d[(pos_start + 1):(pos_end - 1)] > thvar) & (diff(sign(diff(daten[pos_start:pos_end, 2]))) < -1)))
+                    no_peaks <- max(1, sum((no_max < -1) & 
+                      (var3d[(pos_start + 1):(pos_end - 1)] > thvar) & 
+                      (diff(sign(diff(q[pos_start:pos_end]))) < -1)))
 
-
-                    pos_peak <- which.max(daten[pos_start:pos_end, 2]) + pos_start - 1
+                    pos_peak <- which.max(q[pos_start:pos_end]) + pos_start - 1
 
                     if (pos_peak != pos_start) {
-                      basefl <- approxfun(c(daten[pos_start, 1], daten[pos_end, 1]), c(daten[pos_start, 2], daten[pos_end, 2]))
-                      start <- daten[pos_start, 1]
-                      end <- daten[pos_end, 1]
-                      peak_MQ <- max(daten[(pos_start):(pos_end), 2])
-                      peak_date <- daten[pos_peak, 1]
-                      Volume <- sum(daten[(pos_start):(pos_end), 2]) * 24 * 60 * 60 / 1000000
-                      Baseflow_peak <- basefl(peak_date)
-                      Base_vol <- integrate(basefl, lower = daten[pos_start, 1], upper = daten[pos_end, 1])$value * 24 * 60 * 60 / 1000000
-                      Vol_dir <- Volume - Base_vol
-                      base_start <- basefl(start)
-                      base_end <- basefl(end)
-                      HQ <- monthlyHQ[which((monthlyHQ[, 1] >= (peak_date - 1)) & (monthlyHQ[, 1] <= (peak_date + 1))), 2]
-                      if (length(HQ) < 1) {
-                        HQ <- NA
-                      } else {
-                        HQ <- max(HQ)
-                      }
-                      if (!is.na(HQ) && (HQ < peak_MQ)) {
-                        HQ <- NA
-                      }
-                      HQ_dir <- HQ - Baseflow_peak
-                      comm <- "overlaid"
-
-                      event_temp <- data.frame(start, end, peak_date, peak_MQ, Volume, Vol_dir, Baseflow_peak, base_start, base_end, no_peaks, HQ, HQ_dir, comm)
-                      names(event_temp) <- c(
-                        "Begin", "End", "Peak_date", "DailyMQ", "Volume", "dir_Volume",
-                        "baseflow_peak", "baseflow_begin", "baseflow_end", "No_Peaks", "HQ", "HQ_dir", "Comments"
-                      )
-                      events <- rbind(events, event_temp)
+                      event_temp <- cal_floodInfo(q, t, pos_peak, pos_start, pos_end, 
+                      no_peaks, monthlyHQ, comm = "overlaid")
+                      events %<>% rbind(event_temp)
                     }
                   }
                 }
@@ -656,7 +477,7 @@ eventsep <- function(dailyMQ, monthlyHQ = NULL, dvar = 3, gamma = 1, theta = 0.2
                 # remaining part of overlaid wave
                 if (any((peaks > pos_end) & (peaks > (pos_peak + 7)) & (daten[peaks, 2] > 0.2 * max(daten[peaks, 2])))) {
                   pos_peak <- which((peaks > pos_end) & (peaks > (pos_peak + 7)) & (daten[peaks, 2] > 0.2 * max(daten[peaks, 2])))
-                  pos_peak <- peaks[pos_peak[which.max(daten[pos_peak, 2])]]
+                  pos_peak <- peaks[pos_peak[which.max(q[pos_peak])]]
 
                   pos_end <- peaks[length(peaks)] + 1
 
@@ -665,49 +486,39 @@ eventsep <- function(dailyMQ, monthlyHQ = NULL, dvar = 3, gamma = 1, theta = 0.2
                     pos_end <- pos_end + 1
                   }
 
-                  if (daten[pos_end, 2] > daten[pos_end - 1, 2]) pos_end <- pos_end - 1
+                  if (q[pos_end] > q[pos_end - 1]) pos_end <- pos_end - 1
                   if (pos_end > old_end) pos_end <- old_end
 
                   pos_start <- peaks[ind_ev[length(ind_ev)] + 1]
                   while (diffs[pos_start] >= 0) {
-                    if (is.na(diffs[pos_start])) {
-                      break
-                    }
+                    if (is.na(diffs[pos_start])) break
                     pos_start <- pos_start - 1
                   }
-                  while (daten[pos_start, 2] < daten[pos_end, 2]) pos_start <- pos_start + 1
+                  while (q[pos_start] < q[pos_end]) pos_start <- pos_start + 1
 
                   pos_start <- pos_start - 1
 
-                  if (daten[pos_start, 2] >= daten[pos_start + 1, 2]) pos_start <- pos_start + 1
+                  if (q[pos_start] >= q[pos_start + 1]) pos_start <- pos_start + 1
 
-                  if (any(daten[(pos_start + 1):(which.max(daten[pos_start:pos_end, 2]) + pos_start - 1), 2] < daten[pos_start, 2])) {
-                    pos_start <- max(which(daten[(pos_start + 1):(which.max(daten[pos_start:pos_end, 2]) + pos_start - 1), 2] ==
-                      min(daten[(pos_start + 1):(which.max(daten[pos_start:pos_end, 2]) + pos_start - 1), 2]))) + pos_start
+                  if (any(daten[(pos_start + 1):(which.max(q[pos_start:pos_end]) + pos_start - 1), 2] < q[pos_start])) {
+                    pos_start <- max(which(daten[(pos_start + 1):(which.max(q[pos_start:pos_end]) + pos_start - 1), 2] ==
+                      min(daten[(pos_start + 1):(which.max(q[pos_start:pos_end]) + pos_start - 1), 2]))) + pos_start
                   }
 
-
                   no_max <- diff(sign(diff(var3d[pos_start:pos_end])))
-                  no_peaks <- max(1, sum((no_max < -1) & (var3d[(pos_start + 1):(pos_end - 1)] > thvar) & (diff(sign(diff(daten[pos_start:pos_end, 2]))) < -1)))
+                  no_peaks <- max(1, sum((no_max < -1) & (var3d[(pos_start + 1):(pos_end - 1)] > thvar) & (diff(sign(diff(q[pos_start:pos_end]))) < -1)))
 
-
-                  pos_peak <- which.max(daten[pos_start:pos_end, 2]) + pos_start - 1
+                  pos_peak <- which.max(q[pos_start:pos_end]) + pos_start - 1
 
                   if ((pos_peak != pos_start)) {
-                    .q <- daten[, 2]
-                    .t <- daten[, 1]
-                    event_temp <- cal_floodInfo(
-                      .q, .t, pos_peak, pos_start, pos_end,
-                      no_peaks, monthlyHQ, "overlaid"
-                    )
-
+                    event_temp <- cal_floodInfo(q, t, pos_peak, pos_start, pos_end, 
+                      no_peaks, monthlyHQ, comm = "overlaid")
                     t <- rbind(events, event_temp)
                   }
                 }
               }
             }
           }
-
           i <- max(pos_end, i + endvar, old_start + n2 - 1)
         }
       }
