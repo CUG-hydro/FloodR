@@ -5,14 +5,14 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>flood events division • FloodR</title>
+<title>flood events division • FloodDivision</title>
 <!-- jquery --><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script><!-- Bootstrap --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha256-bZLfwXAP04zRMK2BjiO8iu9pf4FbLqX6zitd+tIvLhE=" crossorigin="anonymous">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script><!-- bootstrap-toc --><link rel="stylesheet" href="../bootstrap-toc.css">
 <script src="../bootstrap-toc.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
 <!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- pkgdown --><link href="../pkgdown.css" rel="stylesheet">
 <script src="../pkgdown.js"></script><meta property="og:title" content="flood events division">
-<meta property="og:description" content="FloodR">
+<meta property="og:description" content="FloodDivision">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
 <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
@@ -32,7 +32,7 @@
         <span class="icon-bar"></span>
       </button>
       <span class="navbar-brand">
-        <a class="navbar-link" href="../index.html">FloodR</a>
+        <a class="navbar-link" href="../index.html">FloodDivision</a>
         <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.6.0</span>
       </span>
     </div>
@@ -79,7 +79,7 @@
     
     
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">FloodR</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">FloodDivision</span><span class="op">)</span></span></code></pre></div>
 <div class="section level2">
 <h2 id="洪水事件划分">洪水事件划分<a class="anchor" aria-label="anchor" href="#%E6%B4%AA%E6%B0%B4%E4%BA%8B%E4%BB%B6%E5%88%92%E5%88%86"></a>
 </h2>
@@ -91,25 +91,35 @@
 <code class="sourceCode R"><span><span class="va">date_begin</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="st">"01.01.2000"</span>, format <span class="op">=</span> <span class="st">"%d.%m.%Y"</span><span class="op">)</span></span>
 <span><span class="va">date_end</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="st">"01.01.2004"</span>, format<span class="op">=</span><span class="st">"%d.%m.%Y"</span><span class="op">)</span></span>
 <span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">df_q</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  Date <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="va">date_begin</span>, <span class="va">date_end</span>, <span class="st">"day"</span><span class="op">)</span>,</span>
 <span>  discharge <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Beta.html" class="external-link">rbeta</a></span><span class="op">(</span><span class="fl">1462</span>, <span class="fl">2</span>, <span class="fl">20</span><span class="op">)</span><span class="op">*</span><span class="fl">100</span><span class="op">)</span> <span class="co"># dummy data</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">df_q</span><span class="op">)</span></span>
+<span><span class="co">#&gt;         Date discharge</span></span>
+<span><span class="co">#&gt; 1 2000-01-01  5.214863</span></span>
+<span><span class="co">#&gt; 2 2000-01-02 10.619273</span></span>
+<span><span class="co">#&gt; 3 2000-01-03  4.267655</span></span>
+<span><span class="co">#&gt; 4 2000-01-04 12.001508</span></span>
+<span><span class="co">#&gt; 5 2000-01-05  4.331570</span></span>
+<span><span class="co">#&gt; 6 2000-01-06 13.694599</span></span>
+<span></span>
 <span><span class="va">flood_events</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eventsep.html">eventsep</a></span><span class="op">(</span><span class="va">df_q</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">flood_events</span><span class="op">)</span></span>
-<span><span class="co">#&gt;        Begin        End  Peak_date  DailyMQ      Volume dir_Volume</span></span>
-<span><span class="co">#&gt; 1 2000-01-24 2000-04-29 2000-03-18 29.57755   77.428297  71.705163</span></span>
-<span><span class="co">#&gt; 2 2000-04-27 2003-12-31 2002-09-24 40.03354 1072.848891 267.343287</span></span>
-<span><span class="co">#&gt; 3 2000-05-25 2000-12-04 2000-05-30 30.18758  147.258559 126.151897</span></span>
-<span><span class="co">#&gt; 4 2000-12-20 2001-01-15 2000-12-22 21.06033   20.588834  16.833112</span></span>
-<span><span class="co">#&gt; 5 2001-07-13 2001-08-08 2001-07-17 27.13484   22.198668  17.746420</span></span>
-<span><span class="co">#&gt; 6 2001-08-16 2001-08-20 2001-08-18 11.02653    2.432466   1.816019</span></span>
-<span><span class="co">#&gt;   baseflow_peak baseflow_begin baseflow_end No_Peaks HQ HQ_dir Comments</span></span>
-<span><span class="co">#&gt; 1     0.7175971      0.4692211    0.9107784        8 NA     NA         </span></span>
-<span><span class="co">#&gt; 2     7.1696146      6.2085480    7.6752666       69 NA     NA         </span></span>
-<span><span class="co">#&gt; 3     0.4392872      0.3941252    2.1373782       10 NA     NA overlaid</span></span>
-<span><span class="co">#&gt; 4     0.7857338      0.6246154    2.7191546        2 NA     NA overlaid</span></span>
-<span><span class="co">#&gt; 5     0.7135915      0.1498775    3.8140186        2 NA     NA overlaid</span></span>
-<span><span class="co">#&gt; 6     1.7836991      1.7119246    1.8554736        1 NA     NA overlaid</span></span></code></pre></div>
+<span><span class="co">#&gt;        Begin        End  Peak_date  DailyMQ    Volume dir_Volume baseflow_peak</span></span>
+<span><span class="co">#&gt; 1 2000-01-11 2000-01-20 2000-01-12 23.36334 10.618534   9.880619     0.8286757</span></span>
+<span><span class="co">#&gt; 2 2000-01-11 2000-01-14 2000-01-12 23.36334  2.938474   2.692502     0.8974125</span></span>
+<span><span class="co">#&gt; 3 2000-01-13 2000-01-20 2000-01-17 19.64893  7.680061   7.346325     0.6306416</span></span>
+<span><span class="co">#&gt; 4 2000-01-30 2000-02-15 2000-02-03 22.87885 14.697804  10.851192     2.5932953</span></span>
+<span><span class="co">#&gt; 5 2000-01-30 2000-02-08 2000-02-03 22.87885  6.463666   4.299947     2.7405013</span></span>
+<span><span class="co">#&gt; 6 2000-02-05 2000-02-15 2000-02-12 19.03429  8.234137   6.868547     2.2127629</span></span>
+<span><span class="co">#&gt;   baseflow_begin baseflow_end No_Peaks HQ HQ_dir    Comments</span></span>
+<span><span class="co">#&gt; 1      0.7943073     1.103623        1 NA     NA            </span></span>
+<span><span class="co">#&gt; 2      0.7943073     1.103623        1 NA     NA  first wave</span></span>
+<span><span class="co">#&gt; 3      0.0000000     1.103623        1 NA     NA second wave</span></span>
+<span><span class="co">#&gt; 4      2.4040305     3.161090        1 NA     NA            </span></span>
+<span><span class="co">#&gt; 5      2.4040305     3.161090        1 NA     NA  first wave</span></span>
+<span><span class="co">#&gt; 6      0.0000000     3.161090        1 NA     NA second wave</span></span></code></pre></div>
 <p>The Separation might still contain overlaid flood events which need to be corrected.</p>
 </div>
 <div class="section level3">
